@@ -12,6 +12,7 @@ pub fn read_input() -> Input {
     Input { N, M, V, S, T }
 }
 
+#[derive(Debug)]
 pub struct Input {
     N: usize,
     M: usize,

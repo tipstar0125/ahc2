@@ -10,6 +10,7 @@ use input::read_input;
 fn main() {
     get_time();
     let input = read_input();
+    eprintln!("{:?}", input);
 
     eprintln!("Elapsed: {}", get_time());
 }
