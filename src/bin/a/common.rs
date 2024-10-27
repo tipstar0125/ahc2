@@ -18,17 +18,3 @@ pub fn get_time() -> f64 {
         }
     }
 }
-
-#[macro_export]
-macro_rules! print_red {
-    ($x:expr) => {
-        print!("\x1b[31m{}\x1b[37m", $x);
-    };
-}
-
-#[macro_export]
-macro_rules! println_red {
-    ($x:expr) => {
-        println!("\x1b[31m{}\x1b[37m", $x);
-    };
-}
