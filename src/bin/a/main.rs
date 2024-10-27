@@ -14,7 +14,7 @@ fn main() {
     get_time();
     let input = read_input();
 
-    let state = State::new(input.N, input.V);
+    let state = State::new(input.N, input.V, &input.S);
 
     eprintln!("Elapsed: {}", get_time());
 }

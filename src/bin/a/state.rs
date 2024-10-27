@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use crate::coord::{Coord, DIJ4, DIJ5};
 
 #[derive(Debug, Clone, Copy)]
@@ -70,15 +72,16 @@ pub struct State {
     arm_length: Vec<usize>,
     finger_index: Vec<usize>,
     finger_parent: usize,
+    // field: FxHashSet<(usize, usize)>,
 }
 
 impl State {
-    pub fn new(n: usize, v: usize) -> Self {
+    pub fn new(n: usize, v: usize, field: &Vec<Vec<char>>) -> Self {
         // 長さ2から始めて、2冪の腕を、腕の総和がn以上になるまで追加
         let mut arm_length = vec![];
         let mut v_cnt = 1;
         let mut arm_length_sum = 0;
-        while arm_length_sum < n && v_cnt < v {
+        while arm_length_sum < n / 2 && v_cnt < v {
             let length = 1 << v_cnt;
             arm_length.push(length);
             arm_length_sum += length;
@@ -206,21 +209,25 @@ impl State {
 
 #[cfg(test)]
 mod tests {
-    use crate::print_red;
+    use crate::input::read_input;
+    use colored::*;
 
-    use super::{Direction, State};
+    use super::State;
     use std::thread;
     use std::time::Duration;
 
     #[test]
     fn arm_check() {
-        let n = 30;
-        let v = 6;
-        let state = State::new(n, v);
+        let input = read_input();
+        let n = input.N;
+        let state = State::new(input.N, input.V, &input.S);
         println!("{:?}", state);
         println!("{:?}", state.position());
 
+        let parents_cands = state.next_finger_parent_position();
         let cands = state.next_finger_position();
+
+        assert!(parents_cands.len() == cands.len());
 
         for finger_cands in cands.iter() {
             let mut vis = vec![vec![false; n]; n];
@@ -237,19 +244,21 @@ mod tests {
             if !is_vis {
                 continue;
             }
+            let mut cnt = 0;
             println!();
-            println!("{:?}", finger_cands);
+            cnt += 1;
             for i in 0..n {
                 for j in 0..n {
                     if vis[i][j] {
-                        print_red!("■ ");
+                        print!("{}", "■ ".red());
                     } else {
                         print!("□ ");
                     }
                 }
                 println!();
+                cnt += 1;
             }
-            print!("\x1b[{}A", n + 2);
+            print!("\x1b[{}A", cnt);
             thread::sleep(Duration::from_millis(300));
         }
     }
