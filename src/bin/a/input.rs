@@ -14,9 +14,9 @@ pub fn read_input() -> Input {
 
 #[derive(Debug)]
 pub struct Input {
-    N: usize,
-    M: usize,
-    V: usize,
-    S: Vec<Vec<char>>,
-    T: Vec<Vec<char>>,
+    pub N: usize,
+    pub M: usize,
+    pub V: usize,
+    pub S: Vec<Vec<char>>,
+    pub T: Vec<Vec<char>>,
 }
