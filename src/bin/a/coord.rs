@@ -13,7 +13,7 @@ pub const DIJ5: [Coord; 5] = [
     Coord { i: 0, j: 0 },  // Stop
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Coord {
     pub i: usize,
     pub j: usize,
