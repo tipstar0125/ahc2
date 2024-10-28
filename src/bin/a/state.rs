@@ -72,7 +72,7 @@ pub struct State {
     arm_length: Vec<usize>,
     finger_index: Vec<usize>,
     finger_parent: usize,
-    // field: FxHashSet<(usize, usize)>,
+    field_set: FxHashSet<Coord>,
 }
 
 impl State {
@@ -104,6 +104,16 @@ impl State {
             finger_parent = arm_length.len() - 2;
             finger_index.push(arm_length.len() - 1);
         }
+
+        let mut field_set = FxHashSet::default();
+        for i in 0..n {
+            for j in 0..n {
+                if field[i][j] == '1' {
+                    field_set.insert(Coord::new(i, j));
+                }
+            }
+        }
+
         Self {
             start: Coord::new(n / 2, n / 2),
             root: Coord::new(n / 2, n / 2),
@@ -111,6 +121,7 @@ impl State {
             arm_length,
             finger_index,
             finger_parent,
+            field_set,
         }
     }
     pub fn position(&self) -> Vec<Coord> {
