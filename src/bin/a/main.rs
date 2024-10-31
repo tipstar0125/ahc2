@@ -16,7 +16,7 @@ use coord::Coord;
 use hash::CalcHash;
 use input::read_input;
 use rand_pcg::Pcg64Mcg;
-use state::{move_action_to_directon, FingerAction, State};
+use state::{move_action_to_directon, FingerAction, MoveAction, State};
 
 const DIRS: [char; 5] = ['R', 'D', 'L', 'U', '.'];
 
@@ -36,8 +36,22 @@ fn main() {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    let ops = beam.solve(1, 2, &input, &mut rng, &arm, &state_hash);
+    let mut ops = beam.solve(1, 10, &input, &mut rng, &arm, &state_hash);
 
+
+    // MoveActionがOppositeの場合は、直前と現在の行動をLeftにして、逆方向を向く
+    for i in 1..ops.len() {
+        for j in 0..ops[i].move_actions.len() {
+            let (dir, _) = ops[i].move_actions[j];
+            if dir == MoveAction::Opposite {
+                ops[i].move_actions[j].0 = MoveAction::Left;
+                assert!(ops[i - 1].move_actions[j].0 == MoveAction::None);
+                ops[i - 1].move_actions[j].0 = MoveAction::Left;
+            }
+        }
+    }
+    
+    // 出力
     arm.output();
 
     for op in ops.iter() {
