@@ -5,7 +5,7 @@ use rand_pcg::Pcg64Mcg;
 
 use crate::{coord::Coord, input::Input, state::Direction};
 
-pub struct StateHash {
+pub struct CalcHash {
     field_status_hash_map: Vec<Vec<(usize, usize)>>,
     root_position_hash_map: Vec<Vec<usize>>,
     arm_direction_hash_map: Vec<Vec<usize>>,
@@ -21,7 +21,7 @@ fn gen_not_used(rng: &mut Pcg64Mcg, set: &mut HashSet<usize>) -> usize {
     }
 }
 
-impl StateHash {
+impl CalcHash {
     pub fn new(input: &Input, rng: &mut Pcg64Mcg) -> Self {
         let mut used = HashSet::new();
         let mut field_status_hash_map = vec![vec![(!0, !0); input.N]; input.N];
@@ -114,13 +114,13 @@ mod tests {
 
     use crate::{coord::Coord, input::read_input};
 
-    use super::StateHash;
+    use super::CalcHash;
 
     // #[test]
     fn check() {
         let input = read_input();
         let mut rng = Pcg64Mcg::new(0);
-        let state_hash = StateHash::new(&input, &mut rng);
+        let state_hash = CalcHash::new(&input, &mut rng);
         println!(
             "hash: {}",
             state_hash.init(&input, Coord::new(input.N / 2, input.N / 2))

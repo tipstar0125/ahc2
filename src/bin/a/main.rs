@@ -13,7 +13,7 @@ use arm::Arm;
 use beam::{BeamSearch, Node};
 use common::get_time;
 use coord::Coord;
-use hash::StateHash;
+use hash::CalcHash;
 use input::read_input;
 use rand_pcg::Pcg64Mcg;
 use state::{move_action_to_directon, FingerAction, State};
@@ -26,7 +26,7 @@ fn main() {
     let input = read_input();
     let arm = Arm::new(&input);
     let init_state = State::new(&arm, &input);
-    let state_hash = StateHash::new(&input, &mut rng);
+    let state_hash = CalcHash::new(&input, &mut rng);
     let start = Coord::new(input.N / 2, input.N / 2);
     let init_hash = state_hash.init(&input, start);
     let init_node = Node {

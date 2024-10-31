@@ -3,7 +3,7 @@ use std::cmp::Reverse;
 use crate::{
     arm::Arm,
     coord::{Coord, DIJ5},
-    hash::StateHash,
+    hash::CalcHash,
     input::Input,
     state::{move_action_to_directon, Direction, FingerAction, FingerHas, MoveAction, State},
 };
@@ -89,12 +89,12 @@ impl BeamSearch {
         &self,
         input: &Input,
         cands: &mut Vec<Cand>,
-        rng: &mut rand_pcg::Pcg64Mcg,
+        _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &StateHash,
+        state_hash: &CalcHash,
     ) {
         for i in 0..self.nodes.len() {
-            self.append_cands(input, i, cands, rng, arm, state_hash);
+            self.append_cands(input, i, cands, _rng, arm, state_hash);
         }
     }
 
@@ -105,7 +105,7 @@ impl BeamSearch {
         cands: &mut Vec<Cand>,
         _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &StateHash,
+        state_hash: &CalcHash,
     ) {
         let parent_node = &self.nodes[parent_idx];
         let parent_hash = parent_node.hash;
@@ -173,9 +173,9 @@ impl BeamSearch {
         width: usize,
         depth: usize,
         input: &Input,
-        rng: &mut rand_pcg::Pcg64Mcg,
+        _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &StateHash,
+        state_hash: &CalcHash,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = rustc_hash::FxHashSet::default();
@@ -192,7 +192,7 @@ impl BeamSearch {
                 );
             }
             cands.clear();
-            self.enum_cands(input, &mut cands, rng, arm, state_hash);
+            self.enum_cands(input, &mut cands, _rng, arm, state_hash);
         }
 
         let best = cands.iter().max_by_key(|a| a.raw_score(input)).unwrap();
