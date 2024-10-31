@@ -1,4 +1,8 @@
-use crate::coord::{Coord, DIJ4, DIJ5};
+use crate::{
+    arm::Arm,
+    coord::{Coord, DIJ4, DIJ5},
+    input::Input,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Direction {
@@ -98,53 +102,23 @@ pub struct State {
     pub root: Coord,
     pub arm_direction: Vec<Direction>,
     pub finger_status: Vec<(FingerAction, FingerHas)>,
-    arm_length: Vec<usize>,
-    finger_index: Vec<usize>,
     pub S: Vec<Vec<char>>,
 }
 
 impl State {
-    pub fn new(n: usize, v: usize, S: &Vec<Vec<char>>) -> Self {
-        // 長さ2から始めて、2冪の腕を、腕の総和がn以上になるまで追加
-        let mut arm_length = vec![];
-        let mut v_cnt = 1;
-        let mut arm_length_sum = 0;
-        while arm_length_sum < n / 2 && v_cnt < v {
-            let length = 1 << v_cnt;
-            arm_length.push(length);
-            arm_length_sum += length;
-            v_cnt += 1;
-        }
-
-        // 腕の先端に先端が指になる腕を追加
-        let mut length = 0;
-        let mut finger_index = vec![];
-        while v_cnt < v {
-            arm_length.push(length % n + 1); // 長さが1～nの範囲になるように制限
-            finger_index.push(v_cnt - 1);
-            length += 1;
-            v_cnt += 1;
-        }
-
-        // 指がない場合は、最先端の腕を指とする
-        if finger_index.is_empty() {
-            finger_index.push(arm_length.len() - 1);
-        }
-
+    pub fn new(arm: &Arm, input: &Input) -> Self {
         Self {
-            root: Coord::new(n / 2, n / 2),
-            arm_direction: vec![Direction::Right; arm_length.len()],
-            finger_status: vec![(FingerAction::Init, FingerHas::NotHas); arm_length.len()],
-            arm_length,
-            finger_index,
-            S: S.clone(),
+            root: arm.start,
+            arm_direction: vec![Direction::Right; arm.lengths.len()],
+            finger_status: vec![(FingerAction::Init, FingerHas::NotHas); arm.lengths.len()],
+            S: input.S.clone(),
         }
     }
-    pub fn position(&self) -> Vec<Coord> {
+    pub fn position(&self, arm: &Arm) -> Vec<Coord> {
         let mut position = vec![];
         let mut pos = self.root;
-        for idx in 0..self.arm_length.len() - self.finger_index.len() {
-            let len = self.arm_length[idx];
+        for idx in 0..arm.not_finger_arm_num {
+            let len = arm.lengths[idx];
             let dir = self.arm_direction[idx];
             let mut delta = DIJ4[dir as usize];
             delta.i = delta.i.wrapping_mul(len);
@@ -152,8 +126,8 @@ impl State {
             pos = pos + delta;
             position.push(pos);
         }
-        for idx in self.arm_length.len() - self.finger_index.len()..self.arm_length.len() {
-            let len = self.arm_length[idx];
+        for idx in arm.not_finger_arm_num..arm.lengths.len() {
+            let len = arm.lengths[idx];
             let dir = self.arm_direction[idx];
             let mut delta = DIJ4[dir as usize];
             delta.i = delta.i.wrapping_mul(len);
@@ -162,8 +136,11 @@ impl State {
         }
         position
     }
-    pub fn next_finger_parent_position(&self) -> Vec<(Coord, Vec<(MoveAction, Direction)>)> {
-        let finger_parent_depth = self.arm_length.len() - self.finger_index.len();
+    pub fn next_finger_parent_position(
+        &self,
+        arm: &Arm,
+    ) -> Vec<(Coord, Vec<(MoveAction, Direction)>)> {
+        let finger_parent_depth = arm.not_finger_arm_num;
         // 現在の位置, 累積回転数, 深さ, 行動
         let mut Q = vec![(self.root, 0, 0, vec![])];
         let mut cands = vec![];
@@ -180,7 +157,7 @@ impl State {
                 }
                 continue;
             }
-            let len = self.arm_length[depth];
+            let len = arm.lengths[depth];
             let dir: Direction = self.arm_direction[depth];
             for i in 0..=3 {
                 if i == 2 {
@@ -202,14 +179,14 @@ impl State {
     }
     pub fn cand(
         &self,
+        arm: &Arm,
         T: &Vec<Vec<char>>,
     ) -> Vec<(
         usize,                                 // スコア
         Vec<(MoveAction, Direction)>, // ルートと腕の行動と方向(ルートの方向は常にRightとし使用しない)
         Vec<(FingerAction, FingerHas, Coord)>, // 指の行動と座標
     )> {
-        let next_finger_parent_position = self.next_finger_parent_position();
-        let not_figner_arm_num = self.arm_length.len() - self.finger_index.len();
+        let next_finger_parent_position = self.next_finger_parent_position(arm);
         let mut cands = vec![];
         for (finger_parent_pos, finger_parent_action) in next_finger_parent_position.iter() {
             // 指がついた腕に伝搬される累積回転数を求める
@@ -222,12 +199,12 @@ impl State {
             let mut finger_rotate_actions_and_directions = vec![];
             let mut finger_actions = vec![];
             // 指を持たない腕のアクションは何もしないで埋めておく
-            for _ in 0..not_figner_arm_num {
+            for _ in 0..arm.not_finger_arm_num {
                 finger_actions.push((FingerAction::None, FingerHas::NotHas, Coord::new(!0, !0)));
             }
 
-            for idx in self.finger_index.iter() {
-                let len = self.arm_length[*idx];
+            for idx in arm.fingers.iter() {
+                let len = arm.lengths[*idx];
                 let dir: Direction = to_direction((self.arm_direction[*idx] as usize + rotate) % 4);
                 let (finger_action, finger_has) = self.finger_status[*idx];
                 let mut best_score = 0;
@@ -296,6 +273,7 @@ impl State {
 
 #[cfg(test)]
 mod tests {
+    use crate::arm::Arm;
     use crate::input::read_input;
     use crate::state::FingerAction;
     use colored::*;
@@ -305,11 +283,12 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn arm_check() {
+    fn check() {
         let input = read_input();
-        let n = input.N;
-        let state = State::new(input.N, input.V, &input.S);
+        let arm = Arm::new(&input);
+        let state = State::new(&arm, &input);
         println!("{:?}", state);
+        let n = input.N;
         for i in 0..n {
             for j in 0..n {
                 if input.S[i][j] == '1' {
@@ -321,8 +300,8 @@ mod tests {
             println!();
         }
 
-        let parents_cands = state.next_finger_parent_position();
-        let mut cands = state.cand(&input.T);
+        let parents_cands = state.next_finger_parent_position(&arm);
+        let mut cands = state.cand(&arm, &input.T);
 
         assert!(parents_cands.len() == cands.len());
         let mut score_cnt = 0;

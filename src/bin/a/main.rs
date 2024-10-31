@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+mod arm;
 mod beam;
 mod common;
 mod coord;
@@ -8,6 +9,7 @@ mod hash;
 mod input;
 mod state;
 
+use arm::Arm;
 use beam::{BeamSearch, Node};
 use common::get_time;
 use coord::Coord;
@@ -22,7 +24,8 @@ fn main() {
     get_time();
     let mut rng = Pcg64Mcg::new(0);
     let input = read_input();
-    let init_state = State::new(input.N, input.V, &input.S);
+    let arm = Arm::new(&input);
+    let init_state = State::new(&arm, &input);
     let state_hash = StateHash::new(&input, &mut rng);
     let start = Coord::new(input.N / 2, input.N / 2);
     let init_hash = state_hash.init(&input, start);
@@ -33,9 +36,9 @@ fn main() {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    let ops = beam.solve(1, 2, &input, &mut rng, &state_hash);
+    let ops = beam.solve(1, 2, &input, &mut rng, &arm, &state_hash);
 
-    eprintln!("{}", input.V);
+    arm.output();
 
     for op in ops.iter() {
         let mut output = "".to_string();

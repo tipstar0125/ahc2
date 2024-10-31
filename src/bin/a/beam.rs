@@ -1,6 +1,7 @@
 use std::cmp::Reverse;
 
 use crate::{
+    arm::Arm,
     coord::{Coord, DIJ5},
     hash::StateHash,
     input::Input,
@@ -89,10 +90,11 @@ impl BeamSearch {
         input: &Input,
         cands: &mut Vec<Cand>,
         rng: &mut rand_pcg::Pcg64Mcg,
+        arm: &Arm,
         state_hash: &StateHash,
     ) {
         for i in 0..self.nodes.len() {
-            self.append_cands(input, i, cands, rng, state_hash);
+            self.append_cands(input, i, cands, rng, arm, state_hash);
         }
     }
 
@@ -102,12 +104,13 @@ impl BeamSearch {
         parent_idx: usize,
         cands: &mut Vec<Cand>,
         _rng: &mut rand_pcg::Pcg64Mcg,
+        arm: &Arm,
         state_hash: &StateHash,
     ) {
         let parent_node = &self.nodes[parent_idx];
         let parent_hash = parent_node.hash;
 
-        for (score, arm, finger) in parent_node.state.cand(&input.T) {
+        for (score, arm, finger) in parent_node.state.cand(arm, &input.T) {
             let parent_root_pos = parent_node.state.root;
             let child_root_pos = parent_root_pos + DIJ5[move_action_to_directon(arm[0].0) as usize];
             let field_change_coords: Vec<Coord> = finger
@@ -171,6 +174,7 @@ impl BeamSearch {
         depth: usize,
         input: &Input,
         rng: &mut rand_pcg::Pcg64Mcg,
+        arm: &Arm,
         state_hash: &StateHash,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
@@ -188,7 +192,7 @@ impl BeamSearch {
                 );
             }
             cands.clear();
-            self.enum_cands(input, &mut cands, rng, state_hash);
+            self.enum_cands(input, &mut cands, rng, arm, state_hash);
         }
 
         let best = cands.iter().max_by_key(|a| a.raw_score(input)).unwrap();
