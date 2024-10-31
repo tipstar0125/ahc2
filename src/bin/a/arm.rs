@@ -60,12 +60,15 @@ impl Arm {
     pub fn output(&self) {
         // V
         eprintln!("{}", self.lengths.len() + 1);
+        println!("{}", self.lengths.len() + 1);
         // parent Length
         for (p, len) in self.parents.iter().zip(self.lengths.iter()) {
             eprintln!("{} {}", p, len);
+            println!("{} {}", p, len);
         }
         // x y
         eprintln!("{} {}", self.start.i, self.start.j);
+        println!("{} {}", self.start.i, self.start.j);
     }
 }
 

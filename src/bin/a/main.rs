@@ -57,6 +57,7 @@ fn main() {
             }
         }
         eprintln!("{}", output);
+        println!("{}", output);
     }
 
     eprintln!("Elapsed: {}", get_time());
