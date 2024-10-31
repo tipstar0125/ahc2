@@ -140,6 +140,7 @@ impl State {
         &self,
         arm: &Arm,
     ) -> Vec<(Coord, Vec<(MoveAction, Direction)>)> {
+        let n = self.S.len();
         let finger_parent_depth = arm.not_finger_arm_num;
         // 現在の位置, 累積回転数, 深さ, 行動
         let mut Q = vec![(self.root, 0, 0, vec![])];
@@ -150,9 +151,13 @@ impl State {
                 for i in 0..=4 {
                     let delta = DIJ5[i];
                     let move_action: MoveAction = to_move_direction(i);
+                    let next = pos + delta;
+                    let root_next = self.root + delta;
+                    if !root_next.in_map(n) {
+                        continue;
+                    }
                     let mut next_actions = vec![(move_action, Direction::Right)]; // 根に方向は存在しないが、Rightを入れておく
                     next_actions.extend(actions.clone()); // 腕回転の行動を追加
-                    let next = pos + delta;
                     cands.push((next, next_actions));
                 }
                 continue;
