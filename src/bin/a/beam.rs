@@ -91,10 +91,10 @@ impl BeamSearch {
         cands: &mut Vec<Cand>,
         _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &CalcHash,
+        calc_hash: &CalcHash,
     ) {
         for i in 0..self.nodes.len() {
-            self.append_cands(input, i, cands, _rng, arm, state_hash);
+            self.append_cands(input, i, cands, _rng, arm, calc_hash);
         }
     }
 
@@ -105,7 +105,7 @@ impl BeamSearch {
         cands: &mut Vec<Cand>,
         _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &CalcHash,
+        calc_hash: &CalcHash,
     ) {
         let parent_node = &self.nodes[parent_idx];
         let parent_hash = parent_node.hash;
@@ -124,7 +124,7 @@ impl BeamSearch {
                 .map(|x| x.1)
                 .zip(parent_node.state.arm_direction.iter().cloned())
                 .collect();
-            let hash = state_hash.calc(
+            let hash = calc_hash.calc(
                 parent_hash,
                 &field_change_coords,
                 parent_root_pos,
@@ -175,13 +175,17 @@ impl BeamSearch {
         input: &Input,
         _rng: &mut rand_pcg::Pcg64Mcg,
         arm: &Arm,
-        state_hash: &CalcHash,
+        calc_hash: &CalcHash,
+        necessary_score: usize,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = rustc_hash::FxHashSet::default();
         for t in 0..depth {
             if t != 0 {
                 cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
+                if cands[0].eval_score == necessary_score {
+                    break;
+                }
                 set.clear();
                 self.update(
                     cands
@@ -192,7 +196,7 @@ impl BeamSearch {
                 );
             }
             cands.clear();
-            self.enum_cands(input, &mut cands, _rng, arm, state_hash);
+            self.enum_cands(input, &mut cands, _rng, arm, calc_hash);
         }
 
         let best = cands.iter().max_by_key(|a| a.raw_score(input)).unwrap();

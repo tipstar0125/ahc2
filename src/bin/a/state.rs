@@ -106,6 +106,8 @@ pub struct State {
 }
 
 impl State {
+    const GRAB_SCORE: usize = 1;
+    const RELEASE_SCORE: usize = 2;
     pub fn new(arm: &Arm, input: &Input) -> Self {
         Self {
             root: arm.start,
@@ -113,6 +115,9 @@ impl State {
             finger_status: vec![(FingerAction::Init, FingerHas::NotHas); arm.lengths.len()],
             S: input.S.clone(),
         }
+    }
+    pub fn necessary_score(&self, M: usize) -> usize {
+        M * (Self::GRAB_SCORE + Self::RELEASE_SCORE)
     }
     pub fn position(&self, arm: &Arm) -> Vec<Coord> {
         let mut position = vec![];
@@ -239,9 +244,9 @@ impl State {
                         && finger_pos.in_map(self.S.len())
                         && self.S[finger_pos.i][finger_pos.j] == '0'
                         && T[finger_pos.i][finger_pos.j] == '1'
-                        && best_score < 2
+                        && best_score < Self::RELEASE_SCORE
                     {
-                        best_score = 2;
+                        best_score = Self::RELEASE_SCORE;
                         best_rotate_action = to_rotate_direction(i);
                         best_finger_direction = next_dir;
                         best_finger_action = FingerAction::Release;
@@ -253,9 +258,9 @@ impl State {
                         && finger_pos.in_map(self.S.len())
                         && self.S[finger_pos.i][finger_pos.j] == '1'
                         && T[finger_pos.i][finger_pos.j] == '0'
-                        && best_score < 1
+                        && best_score < Self::GRAB_SCORE
                     {
-                        best_score = 1;
+                        best_score = Self::GRAB_SCORE;
                         best_rotate_action = to_rotate_direction(i);
                         best_finger_direction = next_dir;
                         best_finger_action = FingerAction::Grab;

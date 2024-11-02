@@ -3,10 +3,19 @@ use proconio::{input, marker::Chars};
 pub fn read_input() -> Input {
     input! {
         N: usize,
-        M: usize,
+        _M: usize,
         V: usize,
         S: [Chars; N],
         T: [Chars; N],
+    }
+
+    let mut M = 0;
+    for i in 0..N {
+        for j in 0..N {
+            if S[i][j] == '1' && T[i][j] == '0' {
+                M += 1;
+            }
+        }
     }
 
     Input { N, M, V, S, T }

@@ -29,6 +29,7 @@ fn main() {
     let state_hash = CalcHash::new(&input, &mut rng);
     let start = Coord::new(input.N / 2, input.N / 2);
     let init_hash = state_hash.init(&input, start);
+    let necessary_score = init_state.necessary_score(input.M);
     let init_node = Node {
         track_id: !0,
         score: 0,
