@@ -156,7 +156,7 @@ impl State {
                     if !root_next.in_map(n) {
                         continue;
                     }
-                    let mut next_actions = vec![(move_action, Direction::Right)]; // 根に方向は存在しないが、Rightを入れておく
+                    let mut next_actions = vec![(move_action, Direction::None)]; // 根に方向は存在しないので、Noneを入れておく
                     next_actions.extend(actions.clone()); // 腕回転の行動を追加
                     cands.push((next, next_actions));
                 }
@@ -188,7 +188,7 @@ impl State {
         T: &Vec<Vec<char>>,
     ) -> Vec<(
         usize,                                 // スコア
-        Vec<(MoveAction, Direction)>, // ルートと腕の行動と方向(ルートの方向は常にRightとし使用しない)
+        Vec<(MoveAction, Direction)>, // ルートと腕の行動と方向(ルートの方向は常にNoneとし使用しない)
         Vec<(FingerAction, FingerHas, Coord)>, // 指の行動と座標
     )> {
         let next_finger_parent_position = self.next_finger_parent_position(arm);
@@ -225,7 +225,7 @@ impl State {
                 for i in 0..=3 {
                     if i == 2 && finger_action != FingerAction::None {
                         // 反対方向には一手で行けない
-                        // ただし、直線で何もしていない場合は、2回行動できる
+                        // ただし、直前で何もしていない場合は、2回行動できる
                         continue;
                     }
                     let next_dir: Direction = to_direction((dir as usize + i) % 4);
@@ -329,7 +329,7 @@ mod tests {
             }
 
             score_cnt += 1;
-            let mut cnt = 1;
+            let mut cnt = 0;
             println!();
             println!("Score: {}", score);
             println!("Actions: {:?}", arm);
