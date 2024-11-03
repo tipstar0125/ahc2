@@ -37,8 +37,15 @@ fn main() {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    let mut ops = beam.solve(1, 10, &input, &mut rng, &arm, &state_hash);
-
+    let mut ops = beam.solve(
+        100,
+        500,
+        &input,
+        &mut rng,
+        &arm,
+        &state_hash,
+        necessary_score,
+    );
 
     // MoveActionがOppositeの場合は、直前と現在の行動をLeftにして、逆方向を向く
     for i in 1..ops.len() {
@@ -51,7 +58,7 @@ fn main() {
             }
         }
     }
-    
+
     // 出力
     arm.output();
 
@@ -75,5 +82,6 @@ fn main() {
         println!("{}", output);
     }
 
+    eprintln!("Score: {}", ops.len());
     eprintln!("Elapsed: {}", get_time());
 }
