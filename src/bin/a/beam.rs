@@ -180,20 +180,33 @@ impl BeamSearch {
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = rustc_hash::FxHashSet::default();
+        let mut before_score = 0;
         for t in 0..depth {
             if t != 0 {
                 cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
-                if cands[0].eval_score == necessary_score {
+                let best_score = cands[0].eval_score;
+                if before_score == necessary_score {
                     break;
                 }
                 set.clear();
-                self.update(
-                    cands
-                        .iter()
-                        .filter(|cand| set.insert(cand.hash))
-                        .take(width)
-                        .cloned(),
-                );
+                if best_score == before_score {
+                    self.update(
+                        cands
+                            .iter()
+                            .filter(|cand| set.insert(cand.hash))
+                            .take(input.N / 2 * input.N / 2)
+                            .cloned(),
+                    );
+                } else {
+                    self.update(
+                        cands
+                            .iter()
+                            .filter(|cand| set.insert(cand.hash))
+                            .take(width)
+                            .cloned(),
+                    );
+                }
+                before_score = best_score;
             }
             cands.clear();
             self.enum_cands(input, &mut cands, _rng, arm, calc_hash);
