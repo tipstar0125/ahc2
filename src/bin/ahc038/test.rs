@@ -6,8 +6,9 @@ mod tests {
     use std::process::Stdio;
 
     #[test]
-    fn check() {
-        let tle = 3.0;
+    fn multi() {
+        // TLE設定
+        const TLE: f64 = 3.0;
 
         // --binで指定するディレクトリを取得
         let exe_file_path = env::args().collect::<Vec<String>>()[0].clone();
@@ -19,15 +20,18 @@ mod tests {
             .next()
             .unwrap();
 
-
         for i in 0..100 {
             let test_number = format!("{:04}", i);
+
+            // 実行
             let run_output = Command::new("bash")
                 .args(["shell/run.sh", exe_filename, test_number.as_str()])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output()
                 .unwrap();
+
+            // 標準エラー出力よりスコアと実行時間を取得
             let mut output = "".to_string();
             let mut score = "";
             let binding = String::from_utf8_lossy(&run_output.stderr);
@@ -45,7 +49,7 @@ mod tests {
                         .unwrap()
                         .parse::<f64>()
                         .unwrap();
-                    if elapsed_time > tle {
+                    if elapsed_time > TLE {
                         output += format!("{}sec", line).yellow().to_string().as_str();
                     } else {
                         output += format!("{}sec", line).as_str();
@@ -53,6 +57,7 @@ mod tests {
                 }
             }
 
+            // vis実行
             let vis_output = Command::new("bash")
                 .args([
                     "shell/vis.sh",
@@ -63,10 +68,13 @@ mod tests {
                 .stderr(Stdio::piped())
                 .output()
                 .unwrap();
+
+            // 標準出力よりスコアを取得し、実行結果と同じ値であるか確認
             let ok = String::from_utf8_lossy(&vis_output.stdout)
                 .split("\n")
                 .into_iter()
                 .any(|line| line == score);
+
             let output = format!(
                 "{}: {} {}",
                 test_number,

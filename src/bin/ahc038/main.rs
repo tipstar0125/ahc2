@@ -7,7 +7,7 @@ mod common;
 mod coord;
 mod hash;
 mod input;
-mod multi_test;
+mod test;
 mod state;
 
 use arm::Arm;
