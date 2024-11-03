@@ -42,9 +42,8 @@ impl Arm {
             fingers.push(arm_length.len() - 1);
             parents.push(arm_length.len() - 2);
         }
-
         let finger_num = fingers.len();
-        assert!(finger_num > 1);
+        assert!(finger_num > 0);
         assert!(arm_length.len() == input.V - 1);
         assert!(arm_length.len() == parents.len());
 
