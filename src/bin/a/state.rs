@@ -279,7 +279,6 @@ impl State {
             }
             let mut rotate_actions = finger_parent_action.clone();
             rotate_actions.extend(finger_rotate_actions_and_directions);
-            // TODO: score=0のときはpushしない
             cands.push((score, rotate_actions, finger_actions));
         }
         if score_more_than_zero {
