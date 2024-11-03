@@ -1,12 +1,22 @@
 #[cfg(test)]
 mod tests {
+    use std::env;
     use std::process::Command;
     use std::process::Stdio;
 
     #[test]
     fn check() {
+        let exe_file_path = env::args().collect::<Vec<String>>()[0].clone();
+        let exe_filename = exe_file_path
+            .split("/")
+            .last()
+            .unwrap()
+            .split("-")
+            .next()
+            .unwrap();
+
         let output = Command::new("bash")
-            .args(["shell/run.sh", "a", "0000"])
+            .args(["shell/run.sh", exe_filename, "0000"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
