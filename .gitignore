@@ -8,3 +8,4 @@ in
 out
 tools/in/*.txt
 tools/out/*.txt
+a.rs
