@@ -23,9 +23,9 @@ mod tests {
         for i in 0..100 {
             let test_number = format!("{:04}", i);
 
-            // 実行
-            let run_output = Command::new("bash")
-                .args(["shell/run.sh", exe_filename, test_number.as_str()])
+            // run + visualize
+            let run_output = Command::new("makers")
+                .args(["run", exe_filename, test_number.as_str()])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output()
@@ -57,20 +57,8 @@ mod tests {
                 }
             }
 
-            // vis実行
-            let vis_output = Command::new("bash")
-                .args([
-                    "shell/vis.sh",
-                    format!("tools/in/{}.txt", test_number).as_str(),
-                    format!("tools/out/{}.txt", test_number).as_str(),
-                ])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output()
-                .unwrap();
-
             // 標準出力よりスコアを取得し、実行結果と同じ値であるか確認
-            let ok = String::from_utf8_lossy(&vis_output.stdout)
+            let ok = String::from_utf8_lossy(&run_output.stdout)
                 .split("\n")
                 .into_iter()
                 .any(|line| line == score);

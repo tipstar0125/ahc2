@@ -25,4 +25,4 @@ done
 rustfmt $submit_file
 
 # featuresを指定することでローカルではビジュアライザを動かす
-bash shell/run.sh submit $2
+makers run submit $2

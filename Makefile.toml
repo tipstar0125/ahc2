@@ -1,37 +1,43 @@
-[tasks.CLEAR]
-description = "Window Clear"
+[env]
+RUSTFLAGS="-Awarnings"
+
+[tasks.clear]
+description = "Clear window"
 script = ['''
 #!/bin/bash
 clear >$(tty)
 echo ""
 ''']
 
-[tasks.EXPORT]
-description = "Export env"
+[tasks.mtest]
+description = "Multi test"
 script = ['''
 #!/bin/bash
-export RUSTFLAGS=-Awarnings
+cargo +1.70-x86_64-unknown-linux-gnu test -r --features local --bin $1 --all multi -- --nocapture
 ''']
+dependencies = ["clear"]
 
-[tasks.TEST]
-description = "Test"
+[tasks.run]
+description = "Run and visualize"
 script = ['''
 #!/bin/bash
-bash shell/test.sh $1
+cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/in/$2.txt > tools/out/$2.txt
+cp tools/in/$2.txt in
+cp tools/out/$2.txt out
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis in out
 ''']
-dependencies = ["CLEAR", "EXPORT"]
+dependencies = ["clear"]
 
-[tasks.RUN]
-description = "Run"
-script = ['''
-#!/bin/bash
-bash shell/run.sh $1 $2
-''']
-dependencies = ["CLEAR", "EXPORT"]
-
-[tasks.SUBMIT]
-description = "Make submit"
+[tasks.submit]
+description = "Make submit file"
 script = ['''
 #!/bin/bash
 bash shell/submit.sh $1 $2
+''']
+
+[tasks.vis]
+description = "Visualize"
+script = ['''
+#!/bin/bash
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis $1 $2
 ''']
