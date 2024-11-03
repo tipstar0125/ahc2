@@ -12,5 +12,12 @@ mod tests {
             .output()
             .unwrap();
         println!("{}", String::from_utf8_lossy(&output.stderr));
+        let output = Command::new("bash")
+            .args(["vis.sh", "in", "out"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .unwrap();
+        println!("{}", String::from_utf8_lossy(&output.stdout));
     }
 }

@@ -69,7 +69,7 @@ fn solve(input: &Input) {
                 .as_str();
         }
         // 根は何もしない
-        output += ".";
+        action_out += ".";
         for &(action, _, _) in op.finger_actions.iter() {
             if action == FingerAction::Grab || action == FingerAction::Release {
                 action_out += "P";
@@ -80,12 +80,12 @@ fn solve(input: &Input) {
         output += format!("{}\n", action_out).as_str();
     }
     println!("{}", output);
-    eprintln!("Score: {}", ops.len());
+    eprintln!("Score = {}", ops.len());
 }
 
 fn main() {
     get_time();
     let input = read_input();
     solve(&input);
-    eprintln!("Elapsed: {}", get_time());
+    eprintln!("Elapsed time = {:.3}", get_time());
 }
