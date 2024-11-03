@@ -36,6 +36,10 @@ mod tests {
             let mut score = "";
             let binding = String::from_utf8_lossy(&run_output.stderr);
             for line in binding.split("\n") {
+                if line.starts_with("input:") {
+                    score = line;
+                    output += format!("{}, ", line).as_str();
+                }
                 if line.starts_with("Score = ") {
                     score = line;
                     output += format!("{}, ", line).as_str();

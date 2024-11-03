@@ -17,6 +17,7 @@ pub fn read_input() -> Input {
             }
         }
     }
+    eprintln!("input: N = {}, M = {}, V = {}", N, M, V);
 
     Input { N, M, V, S, T }
 }

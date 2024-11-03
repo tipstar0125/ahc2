@@ -7,8 +7,8 @@ mod common;
 mod coord;
 mod hash;
 mod input;
-mod test;
 mod state;
+mod test;
 
 use arm::Arm;
 use beam::{BeamSearch, Node};
@@ -37,7 +37,7 @@ fn solve(input: &Input) {
     };
     let mut beam = BeamSearch::new(init_node);
     let mut ops = beam.solve(
-        100,
+        250,
         500,
         &input,
         &mut rng,
