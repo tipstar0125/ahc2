@@ -194,7 +194,7 @@ impl BeamSearch {
                         cands
                             .iter()
                             .filter(|cand| set.insert(cand.hash))
-                            .take(input.N / 2 * input.N / 2)
+                            .take((input.N / 2 * input.N / 2).max(width))
                             .cloned(),
                     );
                 } else {
