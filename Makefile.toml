@@ -1,0 +1,37 @@
+[tasks.CLEAR]
+description = "Window Clear"
+script = ['''
+#!/bin/bash
+clear >$(tty)
+echo ""
+''']
+
+[tasks.EXPORT]
+description = "Export env"
+script = ['''
+#!/bin/bash
+export RUSTFLAGS=-Awarnings
+''']
+
+[tasks.TEST]
+description = "Test"
+script = ['''
+#!/bin/bash
+bash shell/test.sh $1
+''']
+dependencies = ["CLEAR", "EXPORT"]
+
+[tasks.RUN]
+description = "Run"
+script = ['''
+#!/bin/bash
+bash shell/run.sh $1 $2
+''']
+dependencies = ["CLEAR", "EXPORT"]
+
+[tasks.SUBMIT]
+description = "Make submit"
+script = ['''
+#!/bin/bash
+bash shell/submit.sh $1 $2
+''']

@@ -6,14 +6,14 @@ mod tests {
     #[test]
     fn check() {
         let output = Command::new("bash")
-            .args(["run.sh", "a", "0000"])
+            .args(["shell/run.sh", "a", "0000"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .unwrap();
         println!("{}", String::from_utf8_lossy(&output.stderr));
         let output = Command::new("bash")
-            .args(["vis.sh", "in", "out"])
+            .args(["shell/vis.sh", "in", "out"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
