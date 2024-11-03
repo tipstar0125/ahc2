@@ -12,7 +12,7 @@ pub struct Arm {
 
 impl Arm {
     pub fn new(input: &Input) -> Self {
-        // 長さ2から始めて、2冪の腕を、腕の総和がn以上になるまで追加
+        // 長さ2から始めて、2冪の腕を、腕の総和がN/2以上になるまで追加
         let mut arm_length = vec![];
         let mut parents = vec![];
         let mut v_cnt = 1;
@@ -40,7 +40,6 @@ impl Arm {
         // 指がない場合は、最先端の腕を指とする
         if fingers.is_empty() {
             fingers.push(arm_length.len() - 1);
-            parents.push(arm_length.len() - 2);
         }
         let finger_num = fingers.len();
         assert!(finger_num > 0);
