@@ -14,19 +14,17 @@ use beam::{BeamSearch, Node};
 use common::get_time;
 use coord::Coord;
 use hash::CalcHash;
-use input::read_input;
+use input::{read_input, Input};
 use rand_pcg::Pcg64Mcg;
 use state::{move_action_to_directon, FingerAction, MoveAction, State};
 
 const DIRS: [char; 5] = ['R', 'D', 'L', 'U', '.'];
 
-fn main() {
-    get_time();
+fn solve(input: &Input) {
     let mut rng = Pcg64Mcg::new(0);
-    let input = read_input();
-    let arm = Arm::new(&input);
-    let init_state = State::new(&arm, &input);
-    let state_hash = CalcHash::new(&input, &mut rng);
+    let arm = Arm::new(input);
+    let init_state = State::new(&arm, input);
+    let state_hash = CalcHash::new(input, &mut rng);
     let start = Coord::new(input.N / 2, input.N / 2);
     let init_hash = state_hash.init(&input, start);
     let necessary_score = init_state.necessary_score(input.M);
@@ -60,12 +58,12 @@ fn main() {
     }
 
     // 出力
-    arm.output();
+    let mut output = arm.output();
 
     for op in ops.iter() {
-        let mut output = "".to_string();
+        let mut action_out = "".to_string();
         for &(action, _) in op.move_actions.iter() {
-            output += DIRS[move_action_to_directon(action) as usize]
+            action_out += DIRS[move_action_to_directon(action) as usize]
                 .to_string()
                 .as_str();
         }
@@ -73,15 +71,37 @@ fn main() {
         output += ".";
         for &(action, _, _) in op.finger_actions.iter() {
             if action == FingerAction::Grab || action == FingerAction::Release {
-                output += "P";
+                action_out += "P";
             } else {
-                output += ".";
+                action_out += ".";
             }
         }
-        eprintln!("{}", output);
-        println!("{}", output);
+        output += format!("{}\n", action_out).as_str();
     }
-
+    println!("{}", output);
     eprintln!("Score: {}", ops.len());
+}
+
+fn main() {
+    get_time();
+    let input = read_input();
+    solve(&input);
     eprintln!("Elapsed: {}", get_time());
+}
+
+#[cfg(test)]
+mod tests {
+    use std::process::Command;
+    use std::process::Stdio;
+
+    #[test]
+    fn check() {
+        let output = Command::new("bash")
+            .args(["run.sh", "a", "0000"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .unwrap();
+        println!("{}", String::from_utf8_lossy(&output.stderr));
+    }
 }

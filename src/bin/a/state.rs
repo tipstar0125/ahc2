@@ -319,7 +319,7 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    #[test]
+    // #[test]
     fn check() {
         let input = read_input();
         let arm = Arm::new(&input);

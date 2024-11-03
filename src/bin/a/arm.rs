@@ -55,18 +55,17 @@ impl Arm {
             parents,
         }
     }
-    pub fn output(&self) {
+    pub fn output(&self) -> String {
+        let mut output = "".to_string();
         // V
-        eprintln!("{}", self.lengths.len() + 1);
-        println!("{}", self.lengths.len() + 1);
+        output += format!("{}\n", self.lengths.len() + 1).as_str();
         // parent Length
         for (p, len) in self.parents.iter().zip(self.lengths.iter()) {
-            eprintln!("{} {}", p, len);
-            println!("{} {}", p, len);
+            output += format!("{} {}\n", p, len).as_str();
         }
         // x y
-        eprintln!("{} {}", self.start.i, self.start.j);
-        println!("{} {}", self.start.i, self.start.j);
+        output += format!("{} {}\n", self.start.i, self.start.j).as_str();
+        output
     }
 }
 
