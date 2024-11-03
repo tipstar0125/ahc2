@@ -7,6 +7,7 @@ mod common;
 mod coord;
 mod hash;
 mod input;
+mod multi_test;
 mod state;
 
 use arm::Arm;
@@ -87,21 +88,4 @@ fn main() {
     let input = read_input();
     solve(&input);
     eprintln!("Elapsed: {}", get_time());
-}
-
-#[cfg(test)]
-mod tests {
-    use std::process::Command;
-    use std::process::Stdio;
-
-    #[test]
-    fn check() {
-        let output = Command::new("bash")
-            .args(["run.sh", "a", "0000"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .unwrap();
-        println!("{}", String::from_utf8_lossy(&output.stderr));
-    }
 }
