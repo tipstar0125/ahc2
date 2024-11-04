@@ -1,10 +1,38 @@
 #[cfg(test)]
 mod tests {
     use colored::*;
+    use itertools::Itertools;
     use std::env;
     use std::fs::File;
     use std::io::Write;
     use std::process::{Command, Stdio};
+    use std::thread;
+
+    fn cocurrent<F, R>(job_num: usize, worker: F, args: Vec<usize>) -> Vec<R>
+    where
+        F: FnOnce(usize) -> R + std::marker::Send + Copy + 'static,
+        R: std::marker::Send + 'static,
+    {
+        let mut handles = vec![];
+        let mut results = vec![];
+        for &arg in args.iter() {
+            let handle = thread::spawn(move || {
+                let reuslt = worker(arg);
+                reuslt
+            });
+            handles.push(handle);
+            if handles.len() == job_num {
+                for handle in handles {
+                    results.push(handle.join().unwrap());
+                }
+                handles = vec![];
+            }
+        }
+        for handle in handles {
+            results.push(handle.join().unwrap());
+        }
+        results
+    }
 
     fn parse_input(line: &str, para: &str) -> usize {
         let mut ret = !0;
@@ -38,8 +66,9 @@ mod tests {
             .unwrap()
     }
 
-    #[test]
-    fn multi() {
+    fn run(test_number: usize) -> String {
+        let test_number = format!("{:04}", test_number);
+
         // TLE設定
         const TLE: f64 = 3.0;
 
@@ -52,75 +81,94 @@ mod tests {
             .split("-")
             .next()
             .unwrap();
+
+        // run + visualize
+        // exp: makers run ahc038 0000
+        let run_output = Command::new("makers")
+            .args(["run", exe_filename, test_number.as_str()])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .unwrap();
+
+        // 標準エラー出力よりスコアと実行時間を取得
+        let mut score = 0;
+        let mut elapsed_time = 0.0;
+        let mut N = 0;
+        let mut M = 0;
+        let mut V = 0;
+
+        let binding = String::from_utf8_lossy(&run_output.stderr);
+        for line in binding.split("\n") {
+            if line.starts_with("input:") {
+                N = parse_input(line, "N");
+                M = parse_input(line, "M");
+                V = parse_input(line, "V");
+            }
+            if line.starts_with("Score = ") {
+                score = parse_score(line);
+            }
+            if line.starts_with("Elapsed time = ") {
+                elapsed_time = parse_elapased_time(line);
+            }
+        }
+
+        // 標準出力よりスコアを取得し、実行結果と同じ値であるか確認
+        let mut vis_score = 0;
+        let binding = String::from_utf8_lossy(&run_output.stdout);
+        for line in binding.split("\n") {
+            if line.starts_with("Score = ") {
+                vis_score = parse_score(line);
+            }
+        }
+
+        println!(
+            "{}: N={}, M={}, V={}, score={}, elapsed={}",
+            if score == vis_score {
+                test_number.to_string().green()
+            } else {
+                test_number.to_string().red()
+            },
+            N,
+            M,
+            V,
+            score,
+            if elapsed_time > TLE {
+                elapsed_time.to_string().yellow()
+            } else {
+                elapsed_time.to_string().white()
+            }
+        );
+        format!(
+            "{},{},{},{},{},{}",
+            test_number, N, M, V, score, elapsed_time
+        )
+    }
+
+    #[test]
+    fn multi() {
+        let job_num = 4;
+        let test_case_num = 100;
+        let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
         writeln!(file, "{}", "num,N,M,V,score,elapsed").unwrap();
-
-        for i in 0..2 {
-            let test_number = format!("{:04}", i);
-
-            // run + visualize
-            // exp: makers run ahc038 0000
-            let run_output = Command::new("makers")
-                .args(["run", exe_filename, test_number.as_str()])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output()
+        let mut score_sum = 0;
+        for result in results {
+            writeln!(file, "{}", result).unwrap();
+            score_sum += result
+                .split(",")
+                .skip(4)
+                .next()
+                .unwrap()
+                .parse::<usize>()
                 .unwrap();
-
-            // 標準エラー出力よりスコアと実行時間を取得
-            let mut score = 0;
-            let mut elapsed_time = 0.0;
-            let mut N = 0;
-            let mut M = 0;
-            let mut V = 0;
-
-            let binding = String::from_utf8_lossy(&run_output.stderr);
-            for line in binding.split("\n") {
-                if line.starts_with("input:") {
-                    N = parse_input(line, "N");
-                    M = parse_input(line, "M");
-                    V = parse_input(line, "V");
-                }
-                if line.starts_with("Score = ") {
-                    score = parse_score(line);
-                }
-                if line.starts_with("Elapsed time = ") {
-                    elapsed_time = parse_elapased_time(line);
-                }
-            }
-
-            // 標準出力よりスコアを取得し、実行結果と同じ値であるか確認
-            let mut vis_score = 0;
-            let binding = String::from_utf8_lossy(&run_output.stdout);
-            for line in binding.split("\n") {
-                if line.starts_with("Score = ") {
-                    vis_score = parse_score(line);
-                }
-            }
-
-            writeln!(
-                file,
-                "{},{},{},{},{},{}",
-                test_number, N, M, V, score, elapsed_time
-            )
-            .unwrap();
-            println!(
-                "{}: N={}, M={}, V={}, score={}, elapsed={}",
-                if score == vis_score {
-                    test_number.to_string().green()
-                } else {
-                    test_number.to_string().red()
-                },
-                N,
-                M,
-                V,
-                score,
-                if elapsed_time > TLE {
-                    elapsed_time.to_string().yellow()
-                } else {
-                    elapsed_time.to_string().white()
-                }
-            );
         }
+        let total = format!(
+            "score sum: {}, {:.3}(log)",
+            score_sum,
+            (score_sum as f64).log2()
+        );
+        println!("{}", total);
+        writeln!(file, "{}", total).unwrap();
     }
 }
