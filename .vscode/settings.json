@@ -1,0 +1,31 @@
+{
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.inlayHints.enabled": "off",
+    "rust-analyzer.check.overrideCommand": [
+        "cargo",
+        "check",
+        "--quiet",
+        "--workspace",
+        "--message-format=json",
+        "--all-targets"
+    ],
+    "rust-analyzer.cargo.buildScripts.overrideCommand": [
+        "cargo",
+        "check",
+        "--quiet",
+        "--workspace",
+        "--message-format=json",
+        "--all-targets"
+    ],
+    "rust-analyzer.checkOnSave.command": "clippy",
+    "rust-analyzer.checkOnSave.extraArgs": [
+        "--",
+        "-A",
+        "clippy::needless_range_loop"
+    ],
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "auto",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "evaluate",
+}
