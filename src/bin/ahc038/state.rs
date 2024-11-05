@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     arm::Arm,
     coord::{Coord, DIJ4, DIJ5},
@@ -108,18 +110,27 @@ pub struct State {
     pub root: Coord,
     pub arm_direction: Vec<Direction>,
     pub finger_status: Vec<(FingerAction, FingerHas)>,
-    pub S: Vec<Vec<char>>,
+    pub field: HashSet<Coord>,
     pub score: usize,
     pub hash: usize,
 }
 
 impl State {
     pub fn new(input: &Input) -> Self {
+        let mut field = HashSet::new();
+        for i in 0..input.N {
+            for j in 0..input.N {
+                if input.S[i][j] == '1' {
+                    field.insert(Coord::new(i, j));
+                }
+            }
+        }
+
         Self {
             root: input.arm.start,
             arm_direction: vec![Direction::Right; input.arm.lengths.len()],
             finger_status: vec![(FingerAction::Init, FingerHas::NotHas); input.arm.lengths.len()],
-            S: input.S.clone(),
+            field,
             score: 0,
             hash: input
                 .calc_hash
@@ -171,7 +182,6 @@ impl State {
         Op,
         bool, // is_done
     )> {
-        let n = self.S.len();
         let finger_parent_relative_position = self.finger_parent_relative_position(&input.arm);
         let mut cands = vec![];
 
@@ -180,7 +190,7 @@ impl State {
             let delta = DIJ5[i];
             let move_action: MoveAction = to_move_direction(i);
             let root_next = self.root + delta;
-            if !root_next.in_map(n) {
+            if !root_next.in_map(input.N) {
                 continue;
             }
             let mut change_score = false;
@@ -236,8 +246,8 @@ impl State {
 
                         // 掴んでいるモノを離す
                         if finger_has == FingerHas::Has
-                            && finger_pos.in_map(self.S.len())
-                            && self.S[finger_pos.i][finger_pos.j] == '0'
+                            && finger_pos.in_map(input.N)
+                            && !self.field.contains(&Coord::new(finger_pos.i, finger_pos.j))
                             && input.T[finger_pos.i][finger_pos.j] == '1'
                             && best_score < input.release_score
                         {
@@ -250,8 +260,8 @@ impl State {
 
                         // 目的地に到達していないモノを掴む
                         } else if finger_has == FingerHas::NotHas
-                            && finger_pos.in_map(self.S.len())
-                            && self.S[finger_pos.i][finger_pos.j] == '1'
+                            && finger_pos.in_map(input.N)
+                            && self.field.contains(&Coord::new(finger_pos.i, finger_pos.j))
                             && input.T[finger_pos.i][finger_pos.j] == '0'
                             && best_score < input.grab_score
                         {
@@ -340,9 +350,9 @@ impl State {
             .collect::<Vec<(FingerAction, FingerHas)>>();
         for (finger_action, _, coord) in op.finger_actions.iter() {
             if *finger_action == FingerAction::Grab {
-                self.S[coord.i][coord.j] = '0';
+                self.field.remove(&Coord::new(coord.i, coord.j));
             } else if *finger_action == FingerAction::Release {
-                self.S[coord.i][coord.j] = '1';
+                self.field.insert(Coord::new(coord.i, coord.j));
             }
         }
         self.score = score;
