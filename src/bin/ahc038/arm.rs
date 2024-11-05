@@ -1,4 +1,4 @@
-use crate::{coord::Coord, input::Input};
+use crate::coord::Coord;
 
 #[derive(Debug)]
 pub struct Arm {
@@ -11,13 +11,13 @@ pub struct Arm {
 }
 
 impl Arm {
-    pub fn new(input: &Input) -> Self {
+    pub fn new(N: usize, V: usize) -> Self {
         // 長さ2から始めて、2冪の腕を、腕の総和がN/2以上になるまで追加
         let mut arm_length = vec![];
         let mut parents = vec![];
         let mut v_cnt = 1;
         let mut arm_length_sum = 0;
-        while arm_length_sum < input.N / 2 && v_cnt < input.V {
+        while arm_length_sum < N / 2 && v_cnt < V {
             let length = 1 << v_cnt;
             arm_length.push(length);
             parents.push(v_cnt - 1);
@@ -29,8 +29,8 @@ impl Arm {
         let mut length = 0;
         let mut fingers = vec![];
         let finger_parent = arm_length.len();
-        while v_cnt < input.V {
-            arm_length.push(length % input.N + 1); // 長さが1～nの範囲になるように制限
+        while v_cnt < V {
+            arm_length.push(length % N + 1); // 長さが1～nの範囲になるように制限
             fingers.push(v_cnt - 1);
             parents.push(finger_parent);
             length += 1;
@@ -43,13 +43,13 @@ impl Arm {
         }
         let finger_num = fingers.len();
         assert!(finger_num > 0);
-        assert!(arm_length.len() == input.V - 1);
+        assert!(arm_length.len() == V - 1);
         assert!(arm_length.len() == parents.len());
 
         Self {
-            start: Coord::new(input.N / 2, input.N / 2),
+            start: Coord::new(N / 2, N / 2),
             finger_num,
-            not_finger_arm_num: input.V - finger_num - 1, // rootを除く
+            not_finger_arm_num: V - finger_num - 1, // rootを除く
             lengths: arm_length,
             fingers,
             parents,
@@ -66,20 +66,5 @@ impl Arm {
         // x y
         output += format!("{} {}\n", self.start.i, self.start.j).as_str();
         output
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::input::read_input;
-
-    use super::Arm;
-
-    // #[test]
-    fn check() {
-        let input = read_input();
-        let arm = Arm::new(&input);
-        eprintln!("{:?}", arm);
-        arm.output();
     }
 }

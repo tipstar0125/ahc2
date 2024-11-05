@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{coord::Coord, input::Input, state::Direction};
+use crate::{coord::Coord, state::Direction};
 
+#[derive(Debug)]
 pub struct CalcHash {
     field_status_hash_map: Vec<Vec<(usize, usize)>>,
     root_position_hash_map: Vec<Vec<usize>>,
@@ -22,27 +23,30 @@ fn gen_not_used(rng: &mut Pcg64Mcg, set: &mut HashSet<usize>) -> usize {
 }
 
 impl CalcHash {
-    pub fn new(input: &Input, rng: &mut Pcg64Mcg) -> Self {
+    pub fn new(N: usize, V: usize) -> Self {
+        let mut rng = Pcg64Mcg::new(0);
         let mut used = HashSet::new();
-        let mut field_status_hash_map = vec![vec![(!0, !0); input.N]; input.N];
-        for i in 0..input.N {
-            for j in 0..input.N {
-                field_status_hash_map[i][j] =
-                    (gen_not_used(rng, &mut used), gen_not_used(rng, &mut used));
+        let mut field_status_hash_map = vec![vec![(!0, !0); N]; N];
+        for i in 0..N {
+            for j in 0..N {
+                field_status_hash_map[i][j] = (
+                    gen_not_used(&mut rng, &mut used),
+                    gen_not_used(&mut rng, &mut used),
+                );
             }
         }
 
-        let mut root_position_hash_map = vec![vec![!0; input.N]; input.N];
-        for i in 0..input.N {
-            for j in 0..input.N {
-                root_position_hash_map[i][j] = gen_not_used(rng, &mut used);
+        let mut root_position_hash_map = vec![vec![!0; N]; N];
+        for i in 0..N {
+            for j in 0..N {
+                root_position_hash_map[i][j] = gen_not_used(&mut rng, &mut used);
             }
         }
 
-        let mut arm_direction_hash_map = vec![vec![!0; 4]; input.V - 1];
-        for i in 0..input.V - 1 {
+        let mut arm_direction_hash_map = vec![vec![!0; 4]; V - 1];
+        for i in 0..V - 1 {
             for j in 0..4 {
-                arm_direction_hash_map[i][j] = gen_not_used(rng, &mut used);
+                arm_direction_hash_map[i][j] = gen_not_used(&mut rng, &mut used);
             }
         }
 
@@ -52,11 +56,11 @@ impl CalcHash {
             arm_direction_hash_map,
         }
     }
-    pub fn init(&self, input: &Input, root: Coord) -> usize {
+    pub fn init(&self, N: usize, V: usize, S: &Vec<Vec<char>>, root: Coord) -> usize {
         let mut ret = 0;
-        for i in 0..input.N {
-            for j in 0..input.N {
-                if input.S[i][j] == '0' {
+        for i in 0..N {
+            for j in 0..N {
+                if S[i][j] == '0' {
                     ret ^= self.field_status_hash_map[i][j].0;
                 } else {
                     ret ^= self.field_status_hash_map[i][j].1;
@@ -64,7 +68,7 @@ impl CalcHash {
             }
         }
         ret ^= self.root_position_hash_map[root.i][root.j];
-        for i in 0..input.V - 1 {
+        for i in 0..V - 1 {
             // Right
             ret ^= self.arm_direction_hash_map[i][0];
         }
@@ -105,25 +109,5 @@ impl CalcHash {
         hash ^= self.calc_root_position(hash, root_pos1, root_pos2);
         hash ^= self.calc_arm_direction(hash, arm_directions);
         hash
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use rand_pcg::Pcg64Mcg;
-
-    use crate::{coord::Coord, input::read_input};
-
-    use super::CalcHash;
-
-    // #[test]
-    fn check() {
-        let input = read_input();
-        let mut rng = Pcg64Mcg::new(0);
-        let state_hash = CalcHash::new(&input, &mut rng);
-        println!(
-            "hash: {}",
-            state_hash.init(&input, Coord::new(input.N / 2, input.N / 2))
-        )
     }
 }
