@@ -1,6 +1,5 @@
 use crate::{
     arm::Arm,
-    beam::Op,
     coord::{Coord, DIJ4, DIJ5},
     input::Input,
 };
@@ -96,6 +95,12 @@ pub enum FingerAction {
 pub enum FingerHas {
     NotHas,
     Has,
+}
+
+#[derive(Debug, Clone)]
+pub struct Op {
+    pub move_actions: Vec<(MoveAction, Direction)>,
+    pub finger_actions: Vec<(FingerAction, FingerHas, Coord)>,
 }
 
 #[derive(Debug, Clone)]
@@ -317,5 +322,30 @@ impl State {
             cands.extend(root_move_cands);
         }
         cands
+    }
+    pub fn apply(&mut self, score: usize, hash: usize, op: &Op) {
+        self.root = self.root + DIJ5[move_action_to_directon(op.move_actions[0].0) as usize];
+        self.arm_direction = op
+            .move_actions
+            .iter()
+            .cloned()
+            .skip(1)
+            .map(|x| x.1)
+            .collect::<Vec<Direction>>();
+        self.finger_status = op
+            .finger_actions
+            .iter()
+            .cloned()
+            .map(|x| (x.0, x.1))
+            .collect::<Vec<(FingerAction, FingerHas)>>();
+        for (finger_action, _, coord) in op.finger_actions.iter() {
+            if *finger_action == FingerAction::Grab {
+                self.S[coord.i][coord.j] = '0';
+            } else if *finger_action == FingerAction::Release {
+                self.S[coord.i][coord.j] = '1';
+            }
+        }
+        self.score = score;
+        self.hash = hash;
     }
 }

@@ -1,9 +1,8 @@
 use std::cmp::Reverse;
 
 use crate::{
-    coord::{Coord, DIJ5},
     input::Input,
-    state::{move_action_to_directon, Direction, FingerAction, FingerHas, MoveAction, State},
+    state::{Op, State},
 };
 
 #[derive(Debug, Clone)]
@@ -18,39 +17,8 @@ impl Node {
         ret
     }
     fn apply(&mut self, cand: &Cand) {
-        self.state.root =
-            self.state.root + DIJ5[move_action_to_directon(cand.op.move_actions[0].0) as usize];
-        self.state.arm_direction = cand
-            .op
-            .move_actions
-            .iter()
-            .cloned()
-            .skip(1)
-            .map(|x| x.1)
-            .collect::<Vec<Direction>>();
-        self.state.finger_status = cand
-            .op
-            .finger_actions
-            .iter()
-            .cloned()
-            .map(|x| (x.0, x.1))
-            .collect::<Vec<(FingerAction, FingerHas)>>();
-        for (finger_action, _, coord) in cand.op.finger_actions.iter() {
-            if *finger_action == FingerAction::Grab {
-                self.state.S[coord.i][coord.j] = '0';
-            } else if *finger_action == FingerAction::Release {
-                self.state.S[coord.i][coord.j] = '1';
-            }
-        }
-        self.state.score = cand.eval_score;
-        self.state.hash = cand.hash;
+        self.state.apply(cand.eval_score, cand.hash, &cand.op);
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Op {
-    pub move_actions: Vec<(MoveAction, Direction)>,
-    pub finger_actions: Vec<(FingerAction, FingerHas, Coord)>,
 }
 
 #[derive(Debug, Clone)]
