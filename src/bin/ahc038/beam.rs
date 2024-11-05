@@ -95,13 +95,18 @@ impl BeamSearch {
         depth: usize,
         input: &Input,
         _rng: &mut rand_pcg::Pcg64Mcg,
+        is_ascending: bool,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = rustc_hash::FxHashSet::default();
         let mut before_score = 0;
         for t in 0..depth {
             if t != 0 {
-                cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
+                if is_ascending {
+                    cands.sort_unstable_by_key(|a| a.eval_score);
+                } else {
+                    cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
+                }
                 let best_cand = &cands[0];
                 if best_cand.is_done {
                     break;
@@ -130,7 +135,11 @@ impl BeamSearch {
             self.append_cands(input, &mut cands, _rng);
         }
 
-        let best = cands.iter().max_by_key(|a| a.raw_score(input)).unwrap();
+        let best = if is_ascending {
+            cands.iter().min_by_key(|a| a.raw_score(input)).unwrap()
+        } else {
+            cands.iter().max_by_key(|a| a.raw_score(input)).unwrap()
+        };
         let mut ret = self.restore(best.parent);
         ret.push(best.op.clone());
         ret

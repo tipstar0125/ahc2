@@ -26,7 +26,7 @@ fn solve(input: &Input) {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    let mut ops = beam.solve(250, 500, &input, &mut rng);
+    let mut ops = beam.solve(250, 500, &input, &mut rng, false);
 
     // MoveActionがOppositeの場合は、直前と現在の行動をLeftにして、逆方向を向く
     for i in 1..ops.len() {
