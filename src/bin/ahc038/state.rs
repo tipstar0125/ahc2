@@ -1,5 +1,6 @@
 use crate::{
     arm::Arm,
+    beam::Op,
     coord::{Coord, DIJ4, DIJ5},
     input::Input,
 };
@@ -103,21 +104,25 @@ pub struct State {
     pub arm_direction: Vec<Direction>,
     pub finger_status: Vec<(FingerAction, FingerHas)>,
     pub S: Vec<Vec<char>>,
+    pub score: usize,
+    pub hash: usize,
 }
 
 impl State {
-    const GRAB_SCORE: usize = 1;
-    const RELEASE_SCORE: usize = 2;
-    pub fn new(arm: &Arm, input: &Input) -> Self {
+    pub fn new(input: &Input) -> Self {
         Self {
-            root: arm.start,
-            arm_direction: vec![Direction::Right; arm.lengths.len()],
-            finger_status: vec![(FingerAction::Init, FingerHas::NotHas); arm.lengths.len()],
+            root: input.arm.start,
+            arm_direction: vec![Direction::Right; input.arm.lengths.len()],
+            finger_status: vec![(FingerAction::Init, FingerHas::NotHas); input.arm.lengths.len()],
             S: input.S.clone(),
+            score: 0,
+            hash: input
+                .calc_hash
+                .init(input.N, input.V, &input.S, input.arm.start),
         }
     }
-    pub fn necessary_score(&self, M: usize) -> usize {
-        M * (Self::GRAB_SCORE + Self::RELEASE_SCORE)
+    pub fn is_done(&self, input: &Input, score: usize) -> bool {
+        score == input.necessary_score
     }
     pub fn finger_parent_relative_position(
         &self,
@@ -154,15 +159,15 @@ impl State {
     }
     pub fn cand(
         &self,
-        arm: &Arm,
-        T: &Vec<Vec<char>>,
+        input: &Input,
     ) -> Vec<(
-        usize,                                 // スコア
-        Vec<(MoveAction, Direction)>, // ルートと腕の行動と方向(ルートの方向は常にNoneとし使用しない)
-        Vec<(FingerAction, FingerHas, Coord)>, // 指の行動と座標
+        usize, // スコア
+        usize, // ハッシュ
+        Op,
+        bool, // is_done
     )> {
         let n = self.S.len();
-        let finger_parent_relative_position = self.finger_parent_relative_position(arm);
+        let finger_parent_relative_position = self.finger_parent_relative_position(&input.arm);
         let mut cands = vec![];
 
         // 上下左右に根が動く、または停止
@@ -189,7 +194,7 @@ impl State {
                 let mut finger_rotate_actions_and_directions = vec![];
                 let mut finger_actions = vec![];
                 // 指を持たない腕のアクションは何もしないで埋めておく
-                for _ in 0..arm.not_finger_arm_num {
+                for _ in 0..input.arm.not_finger_arm_num {
                     finger_actions.push((
                         FingerAction::None,
                         FingerHas::NotHas,
@@ -197,8 +202,8 @@ impl State {
                     ));
                 }
 
-                for idx in arm.fingers.iter() {
-                    let len = arm.lengths[*idx];
+                for idx in input.arm.fingers.iter() {
+                    let len = input.arm.lengths[*idx];
                     let dir: Direction =
                         to_direction((self.arm_direction[*idx] as usize + rotate) % 4);
                     let (finger_action, finger_has) = self.finger_status[*idx];
@@ -228,10 +233,10 @@ impl State {
                         if finger_has == FingerHas::Has
                             && finger_pos.in_map(self.S.len())
                             && self.S[finger_pos.i][finger_pos.j] == '0'
-                            && T[finger_pos.i][finger_pos.j] == '1'
-                            && best_score < Self::RELEASE_SCORE
+                            && input.T[finger_pos.i][finger_pos.j] == '1'
+                            && best_score < input.release_score
                         {
-                            best_score = Self::RELEASE_SCORE;
+                            best_score = input.release_score;
                             best_rotate_action = to_rotate_direction(i);
                             best_finger_direction = next_dir;
                             best_finger_action = FingerAction::Release;
@@ -242,10 +247,10 @@ impl State {
                         } else if finger_has == FingerHas::NotHas
                             && finger_pos.in_map(self.S.len())
                             && self.S[finger_pos.i][finger_pos.j] == '1'
-                            && T[finger_pos.i][finger_pos.j] == '0'
-                            && best_score < Self::GRAB_SCORE
+                            && input.T[finger_pos.i][finger_pos.j] == '0'
+                            && best_score < input.grab_score
                         {
-                            best_score = Self::GRAB_SCORE;
+                            best_score = input.grab_score;
                             best_rotate_action = to_rotate_direction(i);
                             best_finger_direction = next_dir;
                             best_finger_action = FingerAction::Grab;
@@ -264,7 +269,31 @@ impl State {
                 let mut rotate_actions = vec![(move_action, Direction::None)];
                 rotate_actions.extend(finger_parent_action.clone());
                 rotate_actions.extend(finger_rotate_actions_and_directions);
-                root_move_cands.push((score, rotate_actions, finger_actions));
+
+                let field_change_coords: Vec<Coord> = finger_actions
+                    .iter()
+                    .filter(|x| x.0 == FingerAction::Grab || x.0 == FingerAction::Release)
+                    .map(|x| x.2)
+                    .collect();
+                let arm_direction_changes: Vec<(Direction, Direction)> = rotate_actions
+                    .iter()
+                    .skip(1)
+                    .map(|x| x.1)
+                    .zip(self.arm_direction.iter().cloned())
+                    .collect();
+                let hash = input.calc_hash.calc(
+                    self.hash,
+                    &field_change_coords,
+                    self.root,
+                    root_next,
+                    &arm_direction_changes,
+                );
+                let op = Op {
+                    move_actions: rotate_actions,
+                    finger_actions,
+                };
+                score += self.score;
+                root_move_cands.push((score, hash, op, self.is_done(input, score)));
             }
             if !change_score {
                 root_move_cands.clear();
@@ -276,111 +305,17 @@ impl State {
                 for (_, has) in self.finger_status.iter() {
                     finger_actions.push((FingerAction::None, has.clone(), Coord::new(!0, !0)));
                 }
-                root_move_cands.push((0, actions_and_directions, finger_actions));
+                let hash = input
+                    .calc_hash
+                    .calc_root_position(self.hash, self.root, root_next);
+                let op = Op {
+                    move_actions: actions_and_directions,
+                    finger_actions,
+                };
+                root_move_cands.push((self.score, hash, op, self.is_done(input, self.score)));
             }
             cands.extend(root_move_cands);
         }
         cands
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::arm::Arm;
-    use crate::input::read_input;
-    use crate::state::FingerAction;
-    use colored::*;
-
-    use super::State;
-    use std::thread;
-    use std::time::Duration;
-
-    // #[test]
-    fn check() {
-        let input = read_input();
-        let arm = Arm::new(&input);
-        let state = State::new(&arm, &input);
-        println!("{:?}", state);
-        let n = input.N;
-        for i in 0..n {
-            for j in 0..n {
-                if input.S[i][j] == '1' {
-                    print!("{}", "■ ".red());
-                } else {
-                    print!("□ ");
-                }
-            }
-            println!();
-        }
-
-        let mut cands = state.cand(&arm, &input.T);
-        let mut score_cnt = 0;
-
-        for (score, arm, finger) in cands.iter() {
-            if *score == 0 {
-                continue;
-            }
-
-            let mut vis = vec![vec![false; n]; n];
-            for (action, _, coord) in finger.iter() {
-                if !coord.in_map(n) {
-                    continue;
-                }
-                if *action != FingerAction::Grab && *action != FingerAction::Release {
-                    continue;
-                }
-                vis[coord.i][coord.j] = true;
-                assert!(input.S[coord.i][coord.j] == '1');
-            }
-
-            score_cnt += 1;
-            let mut cnt = 0;
-            println!();
-            println!("Score: {}", score);
-            println!("Actions: {:?}", arm);
-            cnt += 3;
-            for i in 0..n {
-                for j in 0..n {
-                    if vis[i][j] {
-                        print!("{}", "■ ".red());
-                    } else {
-                        print!("□ ");
-                    }
-                }
-                println!();
-                cnt += 1;
-            }
-            print!("\x1b[{}A", cnt);
-            thread::sleep(Duration::from_millis(100));
-        }
-        println!("{} / {}", score_cnt, cands.len());
-
-        cands.sort();
-        cands.reverse();
-        let (best_score, best_arm, best_finger) = cands[0].clone();
-        let mut vis = vec![vec![false; n]; n];
-        println!("Best score: {}", best_score);
-        println!("Arm: {:?}", best_arm);
-        println!("Finger: {:?}", best_finger);
-        for (action, _, coord) in best_finger.iter() {
-            if !coord.in_map(n) {
-                continue;
-            }
-            if *action != FingerAction::Grab && *action != FingerAction::Release {
-                continue;
-            }
-            vis[coord.i][coord.j] = true;
-            assert!(input.S[coord.i][coord.j] == '1');
-        }
-        for i in 0..n {
-            for j in 0..n {
-                if vis[i][j] {
-                    print!("{}", "■ ".red());
-                } else {
-                    print!("□ ");
-                }
-            }
-            println!();
-        }
     }
 }

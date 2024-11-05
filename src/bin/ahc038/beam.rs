@@ -1,9 +1,7 @@
 use std::cmp::Reverse;
 
 use crate::{
-    arm::Arm,
     coord::{Coord, DIJ5},
-    hash::CalcHash,
     input::Input,
     state::{move_action_to_directon, Direction, FingerAction, FingerHas, MoveAction, State},
 };
@@ -11,8 +9,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Node {
     pub track_id: usize,
-    pub score: usize,
-    pub hash: usize,
     pub state: State,
 }
 impl Node {
@@ -46,8 +42,8 @@ impl Node {
                 self.state.S[coord.i][coord.j] = '1';
             }
         }
-        self.score = cand.eval_score;
-        self.hash = cand.hash;
+        self.state.score = cand.eval_score;
+        self.state.hash = cand.hash;
     }
 }
 
@@ -63,6 +59,7 @@ struct Cand {
     parent: usize,
     eval_score: usize,
     hash: usize,
+    is_done: bool,
 }
 impl Cand {
     fn raw_score(&self, _input: &Input) -> usize {
@@ -85,63 +82,19 @@ impl BeamSearch {
         }
     }
 
-    fn enum_cands(
-        &self,
-        input: &Input,
-        cands: &mut Vec<Cand>,
-        _rng: &mut rand_pcg::Pcg64Mcg,
-        arm: &Arm,
-        calc_hash: &CalcHash,
-    ) {
-        for i in 0..self.nodes.len() {
-            self.append_cands(input, i, cands, _rng, arm, calc_hash);
-        }
-    }
-
-    fn append_cands(
-        &self,
-        input: &Input,
-        parent_idx: usize,
-        cands: &mut Vec<Cand>,
-        _rng: &mut rand_pcg::Pcg64Mcg,
-        arm: &Arm,
-        calc_hash: &CalcHash,
-    ) {
-        let parent_node = &self.nodes[parent_idx];
-        let parent_hash = parent_node.hash;
-
-        for (score, arm, finger) in parent_node.state.cand(arm, &input.T) {
-            let parent_root_pos = parent_node.state.root;
-            let child_root_pos = parent_root_pos + DIJ5[move_action_to_directon(arm[0].0) as usize];
-            let field_change_coords: Vec<Coord> = finger
-                .iter()
-                .filter(|x| x.0 == FingerAction::Grab || x.0 == FingerAction::Release)
-                .map(|x| x.2)
-                .collect();
-            let arm_direction_changes: Vec<(Direction, Direction)> = arm
-                .iter()
-                .skip(1)
-                .map(|x| x.1)
-                .zip(parent_node.state.arm_direction.iter().cloned())
-                .collect();
-            let hash = calc_hash.calc(
-                parent_hash,
-                &field_change_coords,
-                parent_root_pos,
-                child_root_pos,
-                &arm_direction_changes,
-            );
-
-            let cand = Cand {
-                op: Op {
-                    move_actions: arm,
-                    finger_actions: finger,
-                },
-                parent: parent_idx,
-                eval_score: parent_node.score + score,
-                hash,
-            };
-            cands.push(cand);
+    fn append_cands(&self, input: &Input, cands: &mut Vec<Cand>, _rng: &mut rand_pcg::Pcg64Mcg) {
+        for parent_idx in 0..self.nodes.len() {
+            let parent_node = &self.nodes[parent_idx];
+            for (score, hash, op, is_done) in parent_node.state.cand(input) {
+                let cand = Cand {
+                    op,
+                    parent: parent_idx,
+                    eval_score: score,
+                    hash,
+                    is_done,
+                };
+                cands.push(cand);
+            }
         }
     }
 
@@ -174,9 +127,6 @@ impl BeamSearch {
         depth: usize,
         input: &Input,
         _rng: &mut rand_pcg::Pcg64Mcg,
-        arm: &Arm,
-        calc_hash: &CalcHash,
-        necessary_score: usize,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = rustc_hash::FxHashSet::default();
@@ -184,12 +134,12 @@ impl BeamSearch {
         for t in 0..depth {
             if t != 0 {
                 cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
-                let best_score = cands[0].eval_score;
-                if before_score == necessary_score {
+                let best_cand = &cands[0];
+                if best_cand.is_done {
                     break;
                 }
                 set.clear();
-                if best_score == before_score {
+                if best_cand.eval_score == before_score {
                     self.update(
                         cands
                             .iter()
@@ -206,10 +156,10 @@ impl BeamSearch {
                             .cloned(),
                     );
                 }
-                before_score = best_score;
+                before_score = best_cand.eval_score;
             }
             cands.clear();
-            self.enum_cands(input, &mut cands, _rng, arm, calc_hash);
+            self.append_cands(input, &mut cands, _rng);
         }
 
         let best = cands.iter().max_by_key(|a| a.raw_score(input)).unwrap();
