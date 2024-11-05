@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 
 use crate::{
     arm::Arm,
@@ -110,14 +110,14 @@ pub struct State {
     pub root: Coord,
     pub arm_direction: Vec<Direction>,
     pub finger_status: Vec<(FingerAction, FingerHas)>,
-    pub field: HashSet<Coord>,
+    pub field: FxHashSet<Coord>,
     pub score: usize,
     pub hash: usize,
 }
 
 impl State {
     pub fn new(input: &Input) -> Self {
-        let mut field = HashSet::new();
+        let mut field = FxHashSet::default();
         for i in 0..input.N {
             for j in 0..input.N {
                 if input.S[i][j] == '1' {

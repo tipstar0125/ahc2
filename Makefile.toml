@@ -24,7 +24,7 @@ script = ['''
 cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/in/$2.txt > tools/out/$2.txt
 cp tools/in/$2.txt in
 cp tools/out/$2.txt out
-cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis in out
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis tools/in/$2.txt tools/out/$2.txt
 ''']
 dependencies = ["clear"]
 
