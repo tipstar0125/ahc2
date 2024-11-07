@@ -8,6 +8,33 @@ mod tests {
     use std::process::{Command, Stdio};
     use std::thread;
 
+    struct Result {
+        test_number: String,
+        N: usize,
+        M: usize,
+        V: usize,
+        score: usize,
+        elapsed_time: f64,
+        is_ac: bool,
+        is_tle: bool,
+    }
+
+    impl std::fmt::Display for Result {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut result = "".to_string();
+            result += if self.is_ac { "AC" } else { "WA" };
+            if self.is_tle {
+                result += "/TLE";
+            }
+            write!(
+                f,
+                "{},{},{},{},{},{},{}",
+                self.test_number, self.N, self.M, self.V, self.score, self.elapsed_time, result
+            )?;
+            Ok(())
+        }
+    }
+
     fn cocurrent<F, R>(job_num: usize, worker: F, args: Vec<usize>) -> Vec<R>
     where
         F: FnOnce(usize) -> R + std::marker::Send + Copy + 'static,
@@ -66,7 +93,7 @@ mod tests {
             .unwrap()
     }
 
-    fn run(test_number: usize) -> String {
+    fn run(test_number: usize) -> Result {
         let test_number = format!("{:04}", test_number);
 
         // TLE設定
@@ -139,10 +166,17 @@ mod tests {
                 elapsed_time.to_string().white()
             }
         );
-        format!(
-            "{},{},{},{},{},{}",
-            test_number, N, M, V, score, elapsed_time
-        )
+
+        Result {
+            test_number,
+            N,
+            M,
+            V,
+            score,
+            elapsed_time,
+            is_ac: score == vis_score,
+            is_tle: elapsed_time > TLE,
+        }
     }
 
     #[test]
@@ -151,22 +185,29 @@ mod tests {
         let test_case_num = 100;
         let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "num,N,M,V,score,elapsed").unwrap();
+        writeln!(file, "{}", "num,N,M,V,score,elapsed,result").unwrap();
         let mut score_sum = 0;
+        let mut wa_cnt = 0;
+        let mut tle_cnt = 0;
+
         for result in results {
             writeln!(file, "{}", result).unwrap();
-            score_sum += result
-                .split(",")
-                .skip(4)
-                .next()
-                .unwrap()
-                .parse::<usize>()
-                .unwrap();
+            score_sum += result.score;
+            if !result.is_ac {
+                wa_cnt += 1;
+            }
+            if result.is_tle {
+                tle_cnt += 1;
+            }
         }
         let total = format!(
-            "score sum: {}, {:.3}(log)",
+            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
             score_sum,
-            (score_sum as f64).log2()
+            (score_sum as f64).log2(),
+            wa_cnt,
+            test_case_num,
+            tle_cnt,
+            test_case_num,
         );
         println!("{}", total);
         writeln!(file, "{}", total).unwrap();
