@@ -14,7 +14,7 @@ use beam::{BeamSearch, Node};
 use common::get_time;
 use input::{read_input, Input};
 use rand_pcg::Pcg64Mcg;
-use state::{move_action_to_directon, FingerAction, MoveAction, State};
+use state::{move_action_to_direction, FingerAction, MoveAction, State};
 
 const DIRS: [char; 5] = ['R', 'D', 'L', 'U', '.'];
 
@@ -46,7 +46,7 @@ fn solve(input: &Input) {
     for op in ops.iter() {
         let mut action_out = "".to_string();
         for &(action, _) in op.move_actions.iter() {
-            action_out += DIRS[move_action_to_directon(action) as usize]
+            action_out += DIRS[move_action_to_direction(action) as usize]
                 .to_string()
                 .as_str();
         }

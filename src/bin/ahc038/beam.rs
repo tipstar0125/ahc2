@@ -1,5 +1,7 @@
 use std::cmp::Reverse;
 
+use rustc_hash::FxHashSet;
+
 use crate::{
     input::Input,
     state::{Op, State},
@@ -51,13 +53,28 @@ impl BeamSearch {
     }
 
     fn append_cands(&self, input: &Input, cands: &mut Vec<Cand>, _rng: &mut rand_pcg::Pcg64Mcg) {
+        let mut mp = rustc_hash::FxHashMap::default(); // added from lib
         for parent_idx in 0..self.nodes.len() {
             let parent_node = &self.nodes[parent_idx];
-            for (score, hash, op, is_done) in parent_node.state.cand(input) {
+            for (delta_score, hash, op, is_done) in parent_node.state.cand(input) {
+                // added from lib start
+                // スコアに変動がなく、スコアと根の座標が同じ場合は、腕の方向に依らず同一視
+                if delta_score == 0 {
+                    let next_root = parent_node.state.root
+                        + crate::coord::DIJ5
+                            [crate::state::move_action_to_direction(op.move_actions[0].0) as usize];
+                    if mp.contains_key(&parent_node.state.score)
+                        && mp[&parent_node.state.score] == next_root
+                    {
+                        continue;
+                    }
+                    mp.insert(parent_node.state.score, next_root);
+                }
+                // added from lib end
                 let cand = Cand {
                     op,
                     parent: parent_idx,
-                    eval_score: score,
+                    eval_score: parent_node.state.score + delta_score,
                     hash,
                     is_done,
                 };
@@ -98,7 +115,7 @@ impl BeamSearch {
         is_ascending: bool,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
-        let mut set = rustc_hash::FxHashSet::default();
+        let mut set = FxHashSet::default();
         let mut before_score = 0;
         for t in 0..depth {
             if t != 0 {
