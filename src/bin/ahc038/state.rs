@@ -69,7 +69,7 @@ pub fn to_move_direction(x: usize) -> MoveAction {
     }
 }
 
-pub fn move_action_to_directon(x: MoveAction) -> Direction {
+pub fn move_action_to_direction(x: MoveAction) -> Direction {
     if x == MoveAction::Right {
         Direction::Right
     } else if x == MoveAction::Down {
@@ -334,7 +334,7 @@ impl State {
         cands
     }
     pub fn apply(&mut self, score: usize, hash: usize, op: &Op) {
-        self.root = self.root + DIJ5[move_action_to_directon(op.move_actions[0].0) as usize];
+        self.root = self.root + DIJ5[move_action_to_direction(op.move_actions[0].0) as usize];
         self.arm_direction = op
             .move_actions
             .iter()
