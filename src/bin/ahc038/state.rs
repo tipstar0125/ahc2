@@ -144,6 +144,8 @@ impl State {
         &self,
         arm: &Arm,
     ) -> Vec<(Coord, Vec<(MoveAction, Direction)>)> {
+        // 直前で根以外が行動していなければ、反対方向へ移動可能
+        let is_able_opposite = self.finger_status.iter().all(|x| x.0 == FingerAction::None);
         let finger_parent_depth = arm.not_finger_arm_num;
         // 現在の位置, 累積回転数, 深さ, 行動
         let mut Q = vec![(Coord::new(0, 0), 0, 0, vec![])];
@@ -156,8 +158,9 @@ impl State {
             let len = arm.lengths[depth];
             let dir: Direction = self.arm_direction[depth];
             for i in 0..=3 {
-                if i == 2 {
+                if i == 2 && !is_able_opposite {
                     // 反対方向には一手で行けない
+                    // ただし、直前で根以外が行動していなければ、反対方向へ移動可能
                     continue;
                 }
                 let next_dir: Direction = to_direction((dir as usize + rotate + i) % 4); // 腕の累積回転数を加える必要がある
@@ -193,7 +196,7 @@ impl State {
             if !root_next.in_map(input.N) {
                 continue;
             }
-            let mut change_score = false;
+            let mut score_is_zero = false;
             let mut root_move_cands = vec![];
 
             for (finger_parent_relative_pos, finger_parent_action) in
@@ -278,9 +281,35 @@ impl State {
                         .push((best_rotate_action, best_finger_direction));
                     finger_actions.push((best_finger_action, best_finger_has, best_finger_coord));
                 }
-                if score > 0 {
-                    change_score = true;
+
+                // スコア0の場合は、根の移動以外は同一視
+                if score == 0 {
+                    if !score_is_zero {
+                        let mut actions_and_directions = vec![(move_action, Direction::None)];
+                        for dir in self.arm_direction.iter() {
+                            actions_and_directions.push((MoveAction::None, dir.clone()));
+                        }
+                        let mut finger_actions = vec![];
+                        for (_, has) in self.finger_status.iter() {
+                            finger_actions.push((
+                                FingerAction::None,
+                                has.clone(),
+                                Coord::new(!0, !0),
+                            ));
+                        }
+                        let hash = input
+                            .calc_hash
+                            .calc_root_position(self.hash, self.root, root_next);
+                        let op = Op {
+                            move_actions: actions_and_directions,
+                            finger_actions,
+                        };
+                        root_move_cands.push((0, hash, op, self.is_done(input, self.score)));
+                        score_is_zero = true;
+                    }
+                    continue;
                 }
+
                 let mut rotate_actions = vec![(move_action, Direction::None)];
                 rotate_actions.extend(finger_parent_action.clone());
                 rotate_actions.extend(finger_rotate_actions_and_directions);
@@ -307,27 +336,7 @@ impl State {
                     move_actions: rotate_actions,
                     finger_actions,
                 };
-                score += self.score;
-                root_move_cands.push((score, hash, op, self.is_done(input, score)));
-            }
-            if !change_score {
-                root_move_cands.clear();
-                let mut actions_and_directions = vec![(move_action, Direction::None)];
-                for dir in self.arm_direction.iter() {
-                    actions_and_directions.push((MoveAction::None, dir.clone()));
-                }
-                let mut finger_actions = vec![];
-                for (_, has) in self.finger_status.iter() {
-                    finger_actions.push((FingerAction::None, has.clone(), Coord::new(!0, !0)));
-                }
-                let hash = input
-                    .calc_hash
-                    .calc_root_position(self.hash, self.root, root_next);
-                let op = Op {
-                    move_actions: actions_and_directions,
-                    finger_actions,
-                };
-                root_move_cands.push((self.score, hash, op, self.is_done(input, self.score)));
+                root_move_cands.push((score, hash, op, self.is_done(input, self.score + score)));
             }
             cands.extend(root_move_cands);
         }
