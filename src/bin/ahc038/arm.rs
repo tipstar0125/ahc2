@@ -17,8 +17,9 @@ impl Arm {
         let mut parents = vec![];
         let mut v_cnt = 1;
         let mut arm_length_sum = 0;
+        let arm_delta = if N >= 25 { 7 } else { 3 };
         while arm_length_sum < N / 2 && v_cnt < V {
-            let length = 1 << v_cnt;
+            let length = arm_delta * v_cnt;
             arm_length.push(length);
             parents.push(v_cnt - 1);
             arm_length_sum += length;
