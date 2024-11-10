@@ -21,10 +21,10 @@ dependencies = ["clear"]
 description = "Run and visualize"
 script = ['''
 #!/bin/bash
-cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/in/$2.txt > tools/out/$2.txt
-cp tools/in/$2.txt in
-cp tools/out/$2.txt out
-cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis tools/in/$2.txt tools/out/$2.txt
+cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/$1/in/$2.txt > tools/$1/out/$2.txt
+cp tools/$1/in/$2.txt in
+cp tools/$1/out/$2.txt out
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/$1/Cargo.toml --bin vis tools/$1/in/$2.txt tools/$1/out/$2.txt
 ''']
 dependencies = ["clear"]
 
@@ -39,5 +39,5 @@ bash shell/submit.sh $1 $2
 description = "Visualize"
 script = ['''
 #!/bin/bash
-cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/Cargo.toml --bin vis $1 $2
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/$1/Cargo.toml --bin vis tools/$1/in/$2.txt tools/$1/out/$2.txt
 ''']
