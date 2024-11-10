@@ -9,6 +9,14 @@ clear >$(tty)
 echo ""
 ''']
 
+[tasks.stest]
+description = "Single test"
+script = ['''
+#!/bin/bash
+cargo +1.70-x86_64-unknown-linux-gnu test -r --features local --bin $1 --all $2 -- --nocapture
+''']
+dependencies = ["clear"]
+
 [tasks.mtest]
 description = "Multi test"
 script = ['''

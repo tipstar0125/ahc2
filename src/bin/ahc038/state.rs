@@ -140,42 +140,6 @@ impl State {
     pub fn is_done(&self, input: &Input, score: usize) -> bool {
         score == input.necessary_score
     }
-    pub fn finger_parent_relative_position(
-        &self,
-        arm: &Arm,
-    ) -> Vec<(Coord, Vec<(MoveAction, Direction)>)> {
-        // 直前で根以外が行動していなければ、反対方向へ移動可能
-        let is_able_opposite = self.finger_status.iter().all(|x| x.0 == FingerAction::None);
-        let finger_parent_depth = arm.not_finger_arm_num;
-        // 現在の位置, 累積回転数, 深さ, 行動
-        let mut Q = vec![(Coord::new(0, 0), 0, 0, vec![])];
-        let mut cands = vec![];
-        while let Some((pos, rotate, depth, actions)) = Q.pop() {
-            if depth == finger_parent_depth {
-                cands.push((pos, actions));
-                continue;
-            }
-            let len = arm.lengths[depth];
-            let dir: Direction = self.arm_direction[depth];
-            for i in 0..=3 {
-                if i == 2 && !is_able_opposite {
-                    // 反対方向には一手で行けない
-                    // ただし、直前で根以外が行動していなければ、反対方向へ移動可能
-                    continue;
-                }
-                let next_dir: Direction = to_direction((dir as usize + rotate + i) % 4); // 腕の累積回転数を加える必要がある
-                let mut next_actions = actions.clone();
-                next_actions.push((to_rotate_direction(i), next_dir)); // 回転行動を追加
-                let next_rotate = (rotate + i) % 4; // 伝搬させる累積回転数
-                let mut delta = DIJ4[next_dir as usize];
-                delta.i = delta.i.wrapping_mul(len);
-                delta.j = delta.j.wrapping_mul(len);
-                let next = pos + delta;
-                Q.push((next, next_rotate, depth + 1, next_actions));
-            }
-        }
-        cands
-    }
     pub fn cand(
         &self,
         input: &Input,
@@ -185,7 +149,11 @@ impl State {
         Op,
         bool, // is_done
     )> {
-        let finger_parent_relative_position = self.finger_parent_relative_position(&input.arm);
+        // 直前で根以外が行動していなければ、反対方向へ移動可能
+        let opposite = self.finger_status.iter().all(|x| x.0 == FingerAction::None);
+        let finger_parent_relative_position = input
+            .arm
+            .finger_parent_relative_position(&self.arm_direction, opposite);
         let mut cands = vec![];
 
         // 上下左右に根が動く、または停止
@@ -230,9 +198,7 @@ impl State {
                     let mut best_finger_direction = dir;
                     let mut best_finger_action = FingerAction::None;
                     let mut best_finger_has = finger_has;
-                    let mut delta = DIJ4[dir as usize];
-                    delta.i = delta.i.wrapping_mul(len);
-                    delta.j = delta.j.wrapping_mul(len);
+                    let delta = DIJ4[dir as usize] * Coord::new(len, len);
                     let mut best_finger_coord = finger_parent_pos + delta;
 
                     for i in 0..=3 {
@@ -242,9 +208,7 @@ impl State {
                             continue;
                         }
                         let next_dir: Direction = to_direction((dir as usize + i) % 4);
-                        let mut delta = DIJ4[next_dir as usize];
-                        delta.i = delta.i.wrapping_mul(len);
-                        delta.j = delta.j.wrapping_mul(len);
+                        let delta = DIJ4[next_dir as usize] * Coord::new(len, len);
                         let finger_pos = finger_parent_pos + delta;
 
                         // 掴んでいるモノを離す

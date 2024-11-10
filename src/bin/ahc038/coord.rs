@@ -44,3 +44,13 @@ impl std::ops::Add<Coord> for Coord {
         }
     }
 }
+
+impl std::ops::Mul<Coord> for Coord {
+    type Output = Coord;
+    fn mul(self, rhs: Coord) -> Self::Output {
+        Coord {
+            i: self.i.wrapping_mul(rhs.i),
+            j: self.j.wrapping_mul(rhs.j),
+        }
+    }
+}
