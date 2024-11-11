@@ -1,3 +1,17 @@
+pub const DXY4: [Coord; 4] = [
+    Coord { x: 0, y: 1 },  // Up
+    Coord { x: 1, y: 0 },  // Right
+    Coord { x: 0, y: !0 }, // Down
+    Coord { x: !0, y: 0 }, // Left
+];
+
+pub const TWO_BY_TWO: [Coord; 4] = [
+    Coord { x: 0, y: 0 },
+    Coord { x: !0, y: 0 },
+    Coord { x: 0, y: !0 },
+    Coord { x: !0, y: !0 },
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Coord {
     pub x: usize,
@@ -30,6 +44,6 @@ impl std::ops::Add<Coord> for Coord {
     }
 }
 
-pub fn calc_dist(a: &Coord, b: &Coord) -> usize {
+pub fn calc_dist2(a: &Coord, b: &Coord) -> usize {
     a.x.wrapping_sub(b.x).wrapping_pow(2) + a.y.wrapping_sub(b.y).wrapping_pow(2)
 }

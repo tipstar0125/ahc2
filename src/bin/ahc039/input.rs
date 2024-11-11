@@ -12,7 +12,9 @@ pub fn read_input() -> Input {
 
     Input {
         N,
-        size: 100000,
+        size: 1e5 as usize,
+        cmin: 2e4 as usize,
+        cmax: 8e4 as usize,
         saba: _saba.iter().map(|v| Coord::new(v.0, v.1)).collect_vec(),
         iwashi: _iwashi.iter().map(|v| Coord::new(v.0, v.1)).collect_vec(),
     }
@@ -28,7 +30,9 @@ pub fn parse_input(f: &str) -> Input {
     }
     Input {
         N,
-        size: 100000,
+        size: 1e5 as usize,
+        cmin: 2e4 as usize,
+        cmax: 8e4 as usize,
         saba: _saba.iter().map(|v| Coord::new(v.0, v.1)).collect_vec(),
         iwashi: _iwashi.iter().map(|v| Coord::new(v.0, v.1)).collect_vec(),
     }
@@ -38,6 +42,8 @@ pub fn parse_input(f: &str) -> Input {
 pub struct Input {
     pub N: usize,
     pub size: usize,
+    pub cmin: usize,
+    pub cmax: usize,
     pub saba: Vec<Coord>,
     pub iwashi: Vec<Coord>,
 }

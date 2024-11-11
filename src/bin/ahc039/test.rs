@@ -10,11 +10,9 @@ mod tests {
 
     struct Result {
         test_number: String,
-        N: usize,
-        M: usize,
-        V: usize,
         score: usize,
         elapsed_time: f64,
+        length: usize,
         is_ac: bool,
         is_tle: bool,
     }
@@ -28,8 +26,8 @@ mod tests {
             }
             write!(
                 f,
-                "{},{},{},{},{},{},{}",
-                self.test_number, self.N, self.M, self.V, self.score, self.elapsed_time, result
+                "{},{},{},{},{}",
+                self.test_number, self.length, self.score, self.elapsed_time, result
             )?;
             Ok(())
         }
@@ -61,29 +59,8 @@ mod tests {
         results
     }
 
-    fn parse_input(line: &str, para: &str) -> usize {
-        let mut ret = !0;
-        let inputs: Vec<_> = line.strip_prefix("input:").unwrap().split(",").collect();
-        for input in inputs.iter() {
-            if input.starts_with(format!(" {} = ", para).as_str()) {
-                ret = input
-                    .split("=")
-                    .last()
-                    .unwrap()
-                    .strip_prefix(" ")
-                    .unwrap()
-                    .parse::<usize>()
-                    .unwrap();
-            }
-        }
-        ret
-    }
-
-    fn parse_score(line: &str) -> usize {
-        line.strip_prefix("Score = ")
-            .unwrap()
-            .parse::<usize>()
-            .unwrap()
+    fn parse_int(line: &str, start: &str) -> usize {
+        line.strip_prefix(start).unwrap().parse::<usize>().unwrap()
     }
 
     fn parse_elapased_time(line: &str) -> f64 {
@@ -119,21 +96,13 @@ mod tests {
             .unwrap();
 
         // 標準エラー出力よりスコアと実行時間を取得
-        let mut score = 0;
         let mut elapsed_time = 0.0;
-        let mut N = 0;
-        let mut M = 0;
-        let mut V = 0;
+        let mut length = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
-            if line.starts_with("input:") {
-                N = parse_input(line, "N");
-                M = parse_input(line, "M");
-                V = parse_input(line, "V");
-            }
-            if line.starts_with("Score = ") {
-                score = parse_score(line);
+            if line.starts_with("Length = ") {
+                length = parse_int(line, "Length = ");
             }
             if line.starts_with("Elapsed time = ") {
                 elapsed_time = parse_elapased_time(line);
@@ -145,21 +114,19 @@ mod tests {
         let binding = String::from_utf8_lossy(&run_output.stdout);
         for line in binding.split("\n") {
             if line.starts_with("Score = ") {
-                vis_score = parse_score(line);
+                vis_score = parse_int(line, "Score = ");
             }
         }
 
         println!(
-            "{}: N={}, M={}, V={}, score={}, elapsed={}",
-            if score == vis_score {
-                test_number.to_string().green()
-            } else {
+            "{}: length={}, score={}, elapsed={}",
+            if vis_score == 0 {
                 test_number.to_string().red()
+            } else {
+                test_number.to_string().green()
             },
-            N,
-            M,
-            V,
-            score,
+            length,
+            vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
             } else {
@@ -169,23 +136,21 @@ mod tests {
 
         Result {
             test_number,
-            N,
-            M,
-            V,
-            score,
+            score: vis_score,
             elapsed_time,
-            is_ac: score == vis_score,
+            length,
+            is_ac: vis_score > 0,
             is_tle: elapsed_time > TLE,
         }
     }
 
     #[test]
     fn multi() {
-        let job_num = 4;
+        let job_num = 1;
         let test_case_num = 100;
         let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "num,N,M,V,score,elapsed,result").unwrap();
+        writeln!(file, "{}", "length,score,elapsed,result").unwrap();
         let mut score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
