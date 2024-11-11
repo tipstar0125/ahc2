@@ -31,15 +31,15 @@ impl State {
             score_map_negative_no_score: vec![vec![]],
         }
     }
-    pub fn make_no_score_coords(&self, threshold: isize) -> FxHashSet<Coord> {
-        make_connected_area(Coord::new(0, 0), &self.score_map, threshold)
+    pub fn make_no_score_coords(&self) -> FxHashSet<Coord> {
+        make_connected_area(Coord::new(0, 0), &self.score_map)
     }
-    pub fn grouping_saba_area(&mut self, threshold: isize) -> Vec<(isize, Vec<Coord>)> {
+    pub fn grouping_saba_area(&mut self) -> Vec<(isize, Vec<Coord>)> {
         let mut unused_coords = FxHashSet::default();
         for (x, y) in iproduct!(0..self.grid_num + 2, 0..self.grid_num + 2) {
             unused_coords.insert(Coord::new(x, y));
         }
-        let mut unused_coords = (&unused_coords - &self.make_no_score_coords(threshold))
+        let mut unused_coords = (&unused_coords - &self.make_no_score_coords())
             .iter()
             .cloned()
             .collect_vec();
@@ -54,7 +54,7 @@ impl State {
                     continue 'outer;
                 }
             }
-            let coords = make_connected_area(coord, &score_map_negative_no_score, threshold);
+            let coords = make_connected_area(coord, &score_map_negative_no_score);
             let score_sum = coords
                 .iter()
                 .map(|coord| self.score_map[coord.x][coord.y])
@@ -208,9 +208,9 @@ pub fn calc_grid_score(grid_idx: Coord, delta: usize, input: &Input) -> isize {
     saba_cnt - iwashi_cnt
 }
 
-fn make_connected_area(start: Coord, area: &Vec<Vec<isize>>, threshold: isize) -> FxHashSet<Coord> {
+fn make_connected_area(start: Coord, area: &Vec<Vec<isize>>) -> FxHashSet<Coord> {
     let n = area.len();
-    let st = area[start.x][start.y] > threshold;
+    let st = area[start.x][start.y] > 0;
     let mut visited = FxHashSet::default();
     visited.insert(start);
     let mut Q = VecDeque::new();
@@ -218,7 +218,7 @@ fn make_connected_area(start: Coord, area: &Vec<Vec<isize>>, threshold: isize) -
     while let Some(pos) = Q.pop_front() {
         for dxy in DXY4.iter() {
             let nxt = pos + *dxy;
-            if !nxt.in_map(n) || visited.contains(&nxt) || (area[nxt.x][nxt.y] > threshold) != st {
+            if !nxt.in_map(n) || visited.contains(&nxt) || (area[nxt.x][nxt.y] > 0) != st {
                 continue;
             }
             visited.insert(nxt);
@@ -265,8 +265,7 @@ mod tests {
         let input = &read_input();
         let grid_num = 20;
         let state = State::new(grid_num, input);
-        let threshold = 0;
-        let no_score_coords = state.make_no_score_coords(threshold);
+        let no_score_coords = state.make_no_score_coords();
         for y in (0..grid_num + 2).rev() {
             for x in 0..grid_num + 2 {
                 if no_score_coords.contains(&Coord::new(x, y)) {

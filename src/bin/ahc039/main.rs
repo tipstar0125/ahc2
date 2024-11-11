@@ -27,8 +27,10 @@ fn solve(input: &Input) {
             continue;
         }
         let mut state = State::new(grid_num, input);
-        let threshold = 0;
-        let mut group = state.grouping_saba_area(threshold);
+        let mut group = state.grouping_saba_area();
+        if group.is_empty() {
+            continue;
+        }
         group.sort();
         group.reverse();
         let (score, g) = group[0].clone();
