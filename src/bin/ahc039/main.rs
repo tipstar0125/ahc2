@@ -26,6 +26,7 @@ fn solve(input: &Input) {
         if input.size % grid_num != 0 {
             continue;
         }
+        let delta = input.size / grid_num;
         let mut state = State::new(grid_num, input);
         let mut group = state.grouping_saba_area();
         if group.is_empty() {
@@ -35,6 +36,17 @@ fn solve(input: &Input) {
         group.reverse();
         let (score, g) = group[0].clone();
         let (polygon, length) = state.make_polygon(&g);
+        if polygon.is_empty() {
+            continue;
+        }
+        eprintln!(
+            "grid num: {}, score: {}, length: {}",
+            grid_num, score, length
+        );
+        println!("{}", polygon.len());
+        for p in polygon.iter() {
+            println!("{} {}", p.x * delta, p.y * delta);
+        }
         if polygon.len() > 0 && score > best_score {
             best_score = score;
             best_delta = input.size / grid_num;
