@@ -187,7 +187,7 @@ impl State {
                         Coord::new(!0, !0),
                     ));
                 }
-
+                let mut used_coords = FxHashSet::default();
                 for idx in input.arm.fingers.iter() {
                     let len = input.arm.lengths[*idx];
                     let dir: Direction =
@@ -217,6 +217,7 @@ impl State {
                             && !self.field.contains(&Coord::new(finger_pos.i, finger_pos.j))
                             && input.T[finger_pos.i][finger_pos.j] == '1'
                             && best_score < input.release_score
+                            && !used_coords.contains(&finger_pos)
                         {
                             best_score = input.release_score;
                             best_rotate_action = to_rotate_direction(i);
@@ -231,6 +232,7 @@ impl State {
                             && self.field.contains(&Coord::new(finger_pos.i, finger_pos.j))
                             && input.T[finger_pos.i][finger_pos.j] == '0'
                             && best_score < input.grab_score
+                            && !used_coords.contains(&finger_pos)
                         {
                             best_score = input.grab_score;
                             best_rotate_action = to_rotate_direction(i);
@@ -244,6 +246,7 @@ impl State {
                     finger_rotate_actions_and_directions
                         .push((best_rotate_action, best_finger_direction));
                     finger_actions.push((best_finger_action, best_finger_has, best_finger_coord));
+                    used_coords.insert(best_finger_coord);
                 }
 
                 // スコア0の場合は、根の移動以外は同一視

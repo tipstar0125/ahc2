@@ -54,3 +54,7 @@ impl std::ops::Mul<Coord> for Coord {
         }
     }
 }
+
+pub fn calc_manhattan_dist(a: Coord, b: Coord) -> usize {
+    a.i.abs_diff(b.i) + a.j.abs_diff(b.j)
+}
