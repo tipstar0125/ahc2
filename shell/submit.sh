@@ -23,6 +23,3 @@ for item in "${items[@]}" ; do
 done
 
 rustfmt $submit_file
-
-# featuresを指定することでローカルではビジュアライザを動かす
-makers run submit $2
