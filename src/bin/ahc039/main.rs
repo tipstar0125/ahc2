@@ -4,61 +4,48 @@
 mod common;
 mod coord;
 mod input;
+mod polygon;
 mod state;
 mod test;
 
-use common::get_time;
-use coord::Coord;
+use common::{connect9, get_time};
 use input::{read_input, Input};
+use polygon::polygon_grid_to_vertex_coords;
+use rand_pcg::Pcg64Mcg;
 use state::State;
 
 fn solve(input: &Input) {
-    let mut best_score = 0;
-    let mut best_delta = 1;
-    let mut best_length = 0;
-    let mut best_polygon = vec![
-        Coord::new(0, 0),
-        Coord::new(1e5 as usize, 0),
-        Coord::new(1e5 as usize, 1e5 as usize),
-        Coord::new(0, 1e5 as usize),
-    ];
-    for grid_num in 2..=250 {
-        if input.size % grid_num != 0 {
-            continue;
-        }
-        let delta = input.size / grid_num;
-        let mut state = State::new(grid_num, input);
-        let mut group = state.grouping_saba_area();
-        if group.is_empty() {
-            continue;
-        }
-        group.sort();
-        group.reverse();
-        let (score, g) = group[0].clone();
-        let (polygon, length) = state.make_polygon(&g);
-        if polygon.is_empty() {
-            continue;
-        }
-        eprintln!(
-            "grid num: {}, score: {}, length: {}",
-            grid_num, score, length
-        );
-        println!("{}", polygon.len());
-        for p in polygon.iter() {
-            println!("{} {}", p.x * delta, p.y * delta);
-        }
-        if polygon.len() > 0 && score > best_score {
-            best_score = score;
-            best_delta = input.size / grid_num;
-            best_polygon = polygon;
-            best_length = length;
-        }
+    let mut rng = Pcg64Mcg::new(10);
+    let connect9 = connect9();
+    let tle_list = vec![0.25, 0.5, 1.0, 1.5, 1.95];
+    let grid_num_list = vec![25, 50, 100, 200, 400];
+    let mut state = State::new(grid_num_list[0], input);
+    state.annealing(&mut rng, &connect9, tle_list[0]);
+
+    for (grid_num, tle) in grid_num_list.iter().skip(1).zip(tle_list.iter().skip(1)) {
+        state.to_next_grid(*grid_num, input);
+        state.annealing(&mut rng, &connect9, *tle);
     }
-    println!("{}", best_polygon.len());
-    for p in best_polygon.iter() {
-        println!("{} {}", p.x * best_delta, p.y * best_delta);
+    let polygon = polygon_grid_to_vertex_coords(&state.grid);
+    println!("{}", polygon.len());
+    for p in polygon.iter() {
+        println!("{} {}", p.x * state.dl as usize, p.y * state.dl as usize);
     }
-    eprintln!("Length = {}", best_length);
+    eprintln!("Length = {}", state.length);
+    eprintln!("Score = {}", state.score);
+}
+
+fn vis(grid: &Vec<Vec<bool>>) {
+    for y in (0..grid.len()).rev() {
+        for x in 0..grid.len() {
+            if grid[x][y] {
+                eprint!("■ ");
+            } else {
+                eprint!("□ ");
+            }
+        }
+        eprintln!();
+    }
 }
 
 fn main() {
