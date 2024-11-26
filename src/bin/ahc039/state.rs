@@ -14,6 +14,10 @@ pub struct State {
     pub length: i64,
     pub score: i64,
     pub score_map: Vec<Vec<i64>>,
+    pub best_dl: i64,
+    pub best_length: i64,
+    pub best_grid: Vec<Vec<bool>>,
+    pub best_score: i64,
 }
 
 impl State {
@@ -30,12 +34,16 @@ impl State {
             length: input.size as i64 * 4,
             score: 0,
             score_map,
+            best_dl: dl as i64,
+            best_length: input.size as i64 * 4,
+            best_grid: vec![],
+            best_score: 0,
         }
     }
     pub fn annealing(&mut self, rng: &mut Pcg64Mcg, connect9: &Vec<bool>, tle: f64) {
         let mut iter = 0;
-        let T0 = 20.0;
-        let T1 = 1.0;
+        let T0 = 1e4 / self.grid_num as f64 / self.grid_num as f64;
+        let T1 = T0 * 0.1;
         while get_time() < tle {
             let x = rng.gen_range(0..self.grid_num);
             let y = rng.gen_range(0..self.grid_num);
@@ -58,6 +66,18 @@ impl State {
                 self.length += diff_length;
                 self.score += diff_score;
                 self.grid[pos.x][pos.y] ^= true;
+                if self.score > self.best_score {
+                    self.best_score = self.score;
+                    self.best_grid = self.grid.clone();
+                    self.best_length = self.length;
+                    self.best_dl = self.dl;
+                    // eprintln!(
+                    //     "grid num: {} score: {} elapsed: {}",
+                    //     self.grid_num,
+                    //     self.best_score,
+                    //     get_time()
+                    // );
+                }
             }
         }
         eprintln!("Iter = {}", iter);
