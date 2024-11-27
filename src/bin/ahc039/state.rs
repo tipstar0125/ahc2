@@ -45,6 +45,7 @@ impl State {
         let T0 = 1e4 / self.grid_num as f64 / self.grid_num as f64;
         let T1 = T0 * 0.1;
         while get_time() < tle {
+            // ランダムにグリッドを選んで、エッジに隣接していれば、追加または削除を行う
             let x = rng.gen_range(0..self.grid_num);
             let y = rng.gen_range(0..self.grid_num);
             let pos = Coord::new(x, y);
@@ -71,18 +72,20 @@ impl State {
                     self.best_grid = self.grid.clone();
                     self.best_length = self.length;
                     self.best_dl = self.dl;
-                    // eprintln!(
-                    //     "grid num: {} score: {} elapsed: {}",
-                    //     self.grid_num,
-                    //     self.best_score,
-                    //     get_time()
-                    // );
+                    #[cfg(feature = "local")]
+                    eprintln!(
+                        "grid num: {} score: {} elapsed: {}",
+                        self.grid_num,
+                        self.best_score,
+                        get_time()
+                    );
                 }
             }
         }
         eprintln!("Iter = {}", iter);
     }
     pub fn is_next_to_edge(&self, pos: Coord) -> bool {
+        // エッジに隣接しているグリッドかどうか
         for dxy in &DXY4 {
             let nxt = pos + *dxy;
             if self.grid[pos.x][pos.y] && !nxt.in_map(self.grid_num) {
@@ -98,6 +101,8 @@ impl State {
         false
     }
     pub fn legal_action(&self, pos: Coord, added: bool, connect9: &Vec<bool>) -> bool {
+        // 削除しても連結かどうか
+        // 追加する場合は、ビット反転して網ではない方で考え、削除しても連結かどうか
         let mut mask = get_mask9(&self.grid, pos.x, pos.y);
         if added {
             mask ^= 0x1FF;
@@ -105,6 +110,9 @@ impl State {
         connect9[mask]
     }
     pub fn calc_diff_length(&self, pos: Coord) -> i64 {
+        // 多角形の長さの差分を計算
+        // 隣接しているグリッドが同じ状態の数を数える(外周の場合は網ではないとする)
+        // 1つだけ隣接している場合は-2、3つ隣接している場合は+2
         let mut cnt = 0;
         for dxy in &DXY4 {
             let nxt = pos + *dxy;
@@ -128,6 +136,7 @@ impl State {
         }
     }
     pub fn calc_diff_score(&self, pos: Coord) -> i64 {
+        // スコアの差分を計算
         let mut diff_score = self.score_map[pos.x][pos.y];
         if self.grid[pos.x][pos.y] {
             diff_score *= -1;
@@ -135,6 +144,7 @@ impl State {
         diff_score
     }
     pub fn to_next_grid(&mut self, grid_num: usize, input: &Input) {
+        // 次のグリッド分割に移行
         let dl = input.size / grid_num;
         let score_map = calc_score_map(grid_num, input);
         let mut grid = vec![vec![false; grid_num]; grid_num];
