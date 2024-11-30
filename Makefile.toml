@@ -40,7 +40,6 @@ dependencies = ["clear"]
 description = "Interactive run and visualize"
 script = ['''
 #!/bin/bash
-cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/$1/in/$2.txt > tools/$1/out/$2.txt
 cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/$1/Cargo.toml --bin tester cargo +1.70-x86_64-unknown-linux-gnu run -r --features local --bin $1 < tools/$1/in/$2.txt > tools/$1/out/$2.txt
 cp tools/$1/in/$2.txt in
 cp tools/$1/out/$2.txt out
