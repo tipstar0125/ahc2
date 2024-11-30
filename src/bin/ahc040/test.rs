@@ -11,6 +11,9 @@ mod tests {
     struct Result {
         test_number: String,
         score: usize,
+        N: usize,
+        T: usize,
+        sigma: usize,
         elapsed_time: f64,
         is_ac: bool,
         is_tle: bool,
@@ -25,8 +28,8 @@ mod tests {
             }
             write!(
                 f,
-                "{},{},{},{}",
-                self.test_number, self.score, self.elapsed_time, result
+                "{},{},{},{},{},{},{}",
+                self.test_number, self.N, self.T, self.sigma, self.score, self.elapsed_time, result
             )?;
             Ok(())
         }
@@ -96,11 +99,23 @@ mod tests {
 
         // 標準エラー出力よりスコアと実行時間を取得
         let mut elapsed_time = 0.0;
+        let mut N = 0;
+        let mut T = 0;
+        let mut sigma = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
             if line.starts_with("Elapsed time = ") {
                 elapsed_time = parse_elapased_time(line);
+            }
+            if line.starts_with("N = ") {
+                N = parse_int(line, "N = ");
+            }
+            if line.starts_with("T = ") {
+                T = parse_int(line, "T = ");
+            }
+            if line.starts_with("sigma = ") {
+                sigma = parse_int(line, "sigma = ");
             }
         }
 
@@ -114,12 +129,15 @@ mod tests {
         }
 
         println!(
-            "{}: score={}, elapsed={}",
+            "{}: N={}, T={}, sigma={}, score={}, elapsed={}",
             if vis_score == 0 {
                 test_number.to_string().red()
             } else {
                 test_number.to_string().green()
             },
+            N,
+            T,
+            sigma,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -130,6 +148,9 @@ mod tests {
 
         Result {
             test_number,
+            N,
+            T,
+            sigma,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -143,7 +164,7 @@ mod tests {
         let test_case_num = 100;
         let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "length,score,elapsed,result").unwrap();
+        writeln!(file, "{}", "test_num,N,T,sigma,score,elapsed,result").unwrap();
         let mut score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;

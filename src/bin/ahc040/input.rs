@@ -14,6 +14,10 @@ pub fn read_input() -> Input {
         wh2.push((w.max(MIN).min(MAX), h.max(MIN).min(MAX)));
     }
 
+    eprintln!("N = {}", N);
+    eprintln!("T = {}", T);
+    eprintln!("sigma = {}", sigma);
+
     Input { N, T, sigma, wh2 }
 }
 
