@@ -10,15 +10,14 @@ use std::collections::VecDeque;
 
 use common::get_time;
 use input::{read_input, Input};
-use rand::Rng;
-use rand_pcg::Pcg64Mcg;
 
 const HOW_TO_PACK: [(bool, char); 4] = [(false, 'U'), (true, 'U'), (false, 'L'), (true, 'L')];
 
 fn solve(input: &Input) {
-    let mut rng = Pcg64Mcg::new(10);
+    let dt = (7e5 as i32 - 5e4 as i32) / input.T as i32;
+    let mut width_limit = 5e4 as i32;
     for _ in 0..input.T {
-        let width_limit = rng.gen_range(5e4 as i32..7e5 as i32);
+        width_limit += dt;
         let mut ans = "".to_string();
         ans += &format!("{}\n", input.N);
         let mut now = 0;
