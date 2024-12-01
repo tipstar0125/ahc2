@@ -15,9 +15,16 @@ use proconio::input_interactive;
 const HOW_TO_PACK: [(bool, char); 4] = [(false, 'U'), (true, 'U'), (false, 'L'), (true, 'L')];
 
 fn solve(input: &Input) {
-    let lower = 2e5 as i32;
-    let upper = 7e5 as i32;
+    let mut area = 0.0;
+    for (w, h) in &input.wh2 {
+        area += *w as f64 * *h as f64;
+    }
+    let area = area.sqrt() as i32;
+    let lower = area - 1e5 as i32;
+    let upper = area + 1e5 as i32;
     let dt = (upper - lower) / input.T as i32;
+    let mut best_score = std::i32::MAX;
+    let mut best_limit = 0;
     let mut width_limit = lower;
     for _ in 0..input.T {
         width_limit += dt;
@@ -53,21 +60,34 @@ fn solve(input: &Input) {
             cands.sort();
             let (_, pos, rotates) = cands[0].clone();
             for (i, r) in rotates.iter().enumerate() {
-                if i == 0 {
-                    ans += &format!("{} {} U {}\n", now + i, r, -1);
+                if pos + 1 >= input.N {
+                    if i == 0 {
+                        ans += &format!("{} {} U {}\n", now + i, 1 - r, -1);
+                    } else {
+                        ans += &format!("{} {} U {}\n", now + i, 1 - r, now + i - 1);
+                    }
                 } else {
-                    ans += &format!("{} {} U {}\n", now + i, r, now + i - 1);
+                    if i == 0 {
+                        ans += &format!("{} {} U {}\n", now + i, r, -1);
+                    } else {
+                        ans += &format!("{} {} U {}\n", now + i, r, now + i - 1);
+                    }
                 }
             }
             now = pos + 1;
         }
         println!("{}", ans);
         input_interactive! {
-            w: usize,
-            h: usize,
+            w: i32,
+            h: i32,
+        }
+        if w + h < best_score {
+            best_score = w + h;
+            best_limit = width_limit;
         }
         eprintln!("limit={}, w = {}, h = {}, l={}", width_limit, w, h, w + h);
     }
+    eprintln!("Limit = {}", best_limit);
 }
 
 fn main() {

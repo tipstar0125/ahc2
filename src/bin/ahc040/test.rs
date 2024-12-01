@@ -14,6 +14,7 @@ mod tests {
         N: usize,
         T: usize,
         sigma: usize,
+        limit: usize,
         elapsed_time: f64,
         is_ac: bool,
         is_tle: bool,
@@ -28,8 +29,15 @@ mod tests {
             }
             write!(
                 f,
-                "{},{},{},{},{},{},{}",
-                self.test_number, self.N, self.T, self.sigma, self.score, self.elapsed_time, result
+                "{},{},{},{},{},{},{},{}",
+                self.test_number,
+                self.N,
+                self.T,
+                self.sigma,
+                self.limit,
+                self.score,
+                self.elapsed_time,
+                result
             )?;
             Ok(())
         }
@@ -102,6 +110,7 @@ mod tests {
         let mut N = 0;
         let mut T = 0;
         let mut sigma = 0;
+        let mut limit = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
@@ -117,6 +126,9 @@ mod tests {
             if line.starts_with("sigma = ") {
                 sigma = parse_int(line, "sigma = ");
             }
+            if line.starts_with("Limit = ") {
+                limit = parse_int(line, "Limit = ");
+            }
         }
 
         // 標準出力よりスコアを取得し、実行結果と同じ値であるか確認
@@ -129,7 +141,7 @@ mod tests {
         }
 
         println!(
-            "{}: N={}, T={}, sigma={}, score={}, elapsed={}",
+            "{}: N={}, T={}, sigma={}, limit={}, score={}, elapsed={}",
             if vis_score == 0 {
                 test_number.to_string().red()
             } else {
@@ -138,6 +150,7 @@ mod tests {
             N,
             T,
             sigma,
+            limit,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -151,6 +164,7 @@ mod tests {
             N,
             T,
             sigma,
+            limit,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -164,7 +178,7 @@ mod tests {
         let test_case_num = 100;
         let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "test_num,N,T,sigma,score,elapsed,result").unwrap();
+        writeln!(file, "{}", "test_num,N,T,sigma,limit,score,elapsed,result").unwrap();
         let mut score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
