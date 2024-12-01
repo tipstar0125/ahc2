@@ -38,15 +38,15 @@ fn solve(input: &Input) {
                 let next = pos + 1;
                 let mut next_rotates = rotates.clone();
                 let mut next_heights = heights.clone();
-                next_rotates.push(0);
-                next_heights.push(input.wh2[next].1);
-                Q.push_back((next, width + input.wh2[next].0, next_rotates, next_heights));
-
-                let mut next_rotates = rotates.clone();
-                let mut next_heights = heights.clone();
-                next_rotates.push(1);
-                next_heights.push(input.wh2[next].0);
-                Q.push_back((next, width + input.wh2[next].1, next_rotates, next_heights));
+                if input.wh2[next].0 < input.wh2[next].1 {
+                    next_rotates.push(0);
+                    next_heights.push(input.wh2[next].1);
+                    Q.push_back((next, width + input.wh2[next].0, next_rotates, next_heights));
+                } else {
+                    next_rotates.push(1);
+                    next_heights.push(input.wh2[next].0);
+                    Q.push_back((next, width + input.wh2[next].1, next_rotates, next_heights));
+                }
             }
             cands.sort();
             let (_, pos, rotates) = cands[0].clone();
