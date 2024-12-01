@@ -15,8 +15,10 @@ use proconio::input_interactive;
 const HOW_TO_PACK: [(bool, char); 4] = [(false, 'U'), (true, 'U'), (false, 'L'), (true, 'L')];
 
 fn solve(input: &Input) {
-    let dt = (7e5 as i32 - 2e5 as i32) / input.T as i32;
-    let mut width_limit = 2e5 as i32;
+    let lower = 2e5 as i32;
+    let upper = 7e5 as i32;
+    let dt = (upper - lower) / input.T as i32;
+    let mut width_limit = lower;
     for _ in 0..input.T {
         width_limit += dt;
         let mut ans = "".to_string();
