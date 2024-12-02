@@ -73,7 +73,7 @@ mod tests {
         line.strip_prefix(start).unwrap().parse::<usize>().unwrap()
     }
 
-    fn parse_elapased_time(line: &str) -> f64 {
+    fn parse_elapsed_time(line: &str) -> f64 {
         line.strip_prefix("Elapsed time = ")
             .unwrap()
             .parse::<f64>()
@@ -115,7 +115,7 @@ mod tests {
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
             if line.starts_with("Elapsed time = ") {
-                elapsed_time = parse_elapased_time(line);
+                elapsed_time = parse_elapsed_time(line);
             }
             if line.starts_with("N = ") {
                 N = parse_int(line, "N = ");
@@ -180,12 +180,14 @@ mod tests {
         let mut file = File::create("results.csv").unwrap();
         writeln!(file, "{}", "test_num,N,T,sigma,limit,score,elapsed,result").unwrap();
         let mut score_sum = 0;
+        let mut best_score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
 
         for result in results {
             writeln!(file, "{}", result).unwrap();
             score_sum += result.score;
+            best_score_sum += result.limit;
             if !result.is_ac {
                 wa_cnt += 1;
             }
@@ -194,13 +196,14 @@ mod tests {
             }
         }
         let total = format!(
-            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
+            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{} best: {}",
             score_sum / 2,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,
             tle_cnt,
             test_case_num,
+            best_score_sum / 2,
         );
         println!("{}", total);
         writeln!(file, "{}", total).unwrap();
