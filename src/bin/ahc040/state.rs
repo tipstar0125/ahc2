@@ -148,9 +148,9 @@ impl State {
                 let (w, h, pos) = self.calc_length(op, input);
                 let score = w + h;
                 let delta_score = score as usize - self.score;
-                let hash = input.calc_hash.calc(self.hash, i, j + 1, turn, rot);
+                // let hash = input.calc_hash.calc(self.hash, i, j + 1, turn, rot);
                 op.pos = pos;
-                cand.push((delta_score, hash, op, turn + 1 == input.N));
+                cand.push((delta_score, score as usize, op, turn + 1 == input.N));
             };
 
             if i == 0 && length_sum + w <= input.width_limit && j + 1 < input.calc_hash.MAX {
@@ -161,13 +161,13 @@ impl State {
             }
             if i > 0 {
                 let up_length_sum = self.lines[i - 1].0;
-                if (length_sum + w + input.sigma * 1000 <= up_length_sum
+                if (length_sum + w + input.sigma * 100 <= up_length_sum
                     || up_length_sum + w >= input.width_limit)
                     && j + 1 < input.calc_hash.MAX
                 {
                     append_cand(false);
                 }
-                if (length_sum + h + input.sigma * 1000 <= up_length_sum
+                if (length_sum + h + input.sigma * 100 <= up_length_sum
                     || up_length_sum + w >= input.width_limit)
                     && j + 1 < input.calc_hash.MAX
                 {
