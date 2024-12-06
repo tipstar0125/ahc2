@@ -161,13 +161,13 @@ impl State {
             }
             if i > 0 {
                 let up_length_sum = self.lines[i - 1].0;
-                if (length_sum + w + input.sigma * 100 <= up_length_sum
+                if (length_sum + w + input.sigma * 20 <= up_length_sum
                     || up_length_sum + w >= input.width_limit)
                     && j + 1 < input.calc_hash.MAX
                 {
                     append_cand(false);
                 }
-                if (length_sum + h + input.sigma * 100 <= up_length_sum
+                if (length_sum + h + input.sigma * 20 <= up_length_sum
                     || up_length_sum + w >= input.width_limit)
                     && j + 1 < input.calc_hash.MAX
                 {

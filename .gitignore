@@ -9,4 +9,5 @@ tools/in/*.txt
 tools/out/*.txt
 a.rs
 *.csv
+*.json
 tools_copy.sh

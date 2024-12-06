@@ -22,7 +22,7 @@ fn solve(input: &Input) {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    beam.solve(5000, input.N, &input, &mut rng, true);
+    beam.solve(10000, input.N, &input, &mut rng, true);
 }
 
 fn main() {

@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
     use colored::*;
-    use itertools::Itertools;
+    use serde::{Deserialize, Serialize};
     use std::env;
     use std::fs::File;
+    use std::io::prelude::*;
     use std::io::Write;
     use std::process::{Command, Stdio};
     use std::thread;
 
+    #[derive(Debug, Serialize, Deserialize)]
     struct Result {
         test_number: String,
         score: usize,
@@ -45,15 +47,15 @@ mod tests {
 
     fn cocurrent<F, R>(job_num: usize, worker: F, args: Vec<usize>) -> Vec<R>
     where
-        F: FnOnce(usize) -> R + std::marker::Send + Copy + 'static,
+        F: FnOnce(usize, usize) -> R + std::marker::Send + Copy + 'static,
         R: std::marker::Send + 'static,
     {
         let mut handles = vec![];
         let mut results = vec![];
-        for &arg in args.iter() {
+        for (i, &arg) in args.iter().enumerate() {
             let handle = thread::spawn(move || {
-                let reuslt = worker(arg);
-                reuslt
+                let result = worker(i, arg);
+                result
             });
             handles.push(handle);
             if handles.len() == job_num {
@@ -80,7 +82,7 @@ mod tests {
             .unwrap()
     }
 
-    fn run(test_number: usize) -> Result {
+    fn run(test_number: usize, before_score: usize) -> Result {
         let test_number = format!("{:04}", test_number);
 
         // TLE設定
@@ -140,8 +142,10 @@ mod tests {
             }
         }
 
+        let delta_score = vis_score as i64 - before_score as i64;
+
         println!(
-            "{}: N={}, T={}, sigma={}, limit={}, score={}, elapsed={}",
+            "{}: N={}, T={}, sigma={}, limit={}, score={}, elapsed={}, delta={}",
             if vis_score == 0 {
                 test_number.to_string().red()
             } else {
@@ -156,6 +160,13 @@ mod tests {
                 elapsed_time.to_string().yellow()
             } else {
                 elapsed_time.to_string().white()
+            },
+            if delta_score == 0 {
+                delta_score.to_string().white()
+            } else if delta_score < 0 {
+                delta_score.to_string().green()
+            } else {
+                delta_score.to_string().red()
             }
         );
 
@@ -176,16 +187,47 @@ mod tests {
     fn multi() {
         let job_num = 4;
         let test_case_num = 100;
-        let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
+
+        let initial_score = 0;
+        let before_scores = match File::open("before.json") {
+            Ok(mut file) => {
+                let mut contents = String::new();
+                file.read_to_string(&mut contents).unwrap();
+                let best_results: Vec<Result> = serde_json::from_str(&contents).unwrap();
+                let mut best_scores = vec![initial_score; test_case_num];
+                for r in best_results.iter() {
+                    let num = r.test_number.parse::<usize>().unwrap();
+                    if num < test_case_num {
+                        best_scores[num] = r.score;
+                    }
+                }
+                best_scores
+            }
+            Err(_) => {
+                vec![initial_score; test_case_num]
+            }
+        };
+
+        let results = cocurrent(job_num, run, before_scores.clone());
+
+        let mut json_file = File::create("before.json").unwrap();
+        writeln!(json_file, "{}", serde_json::to_string(&results).unwrap()).unwrap();
+
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "test_num,N,T,sigma,limit,score,elapsed,result").unwrap();
+        writeln!(
+            file,
+            "{}",
+            "test_num,N,T,sigma,limit,score,elapsed,result,delta"
+        )
+        .unwrap();
         let mut score_sum = 0;
         let mut best_score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
 
-        for result in results {
-            writeln!(file, "{}", result).unwrap();
+        for (i, result) in results.iter().enumerate() {
+            let delta_score = result.score as i64 - before_scores[i] as i64;
+            writeln!(file, "{},{}", result, delta_score).unwrap();
             score_sum += result.score;
             best_score_sum += result.limit;
             if !result.is_ac {
