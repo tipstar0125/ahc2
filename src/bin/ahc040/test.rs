@@ -210,7 +210,7 @@ mod tests {
 
         let results = cocurrent(job_num, run, before_scores.clone());
 
-        let mut json_file = File::create("before.json").unwrap();
+        let mut json_file = File::create("results.json").unwrap();
         writeln!(json_file, "{}", serde_json::to_string(&results).unwrap()).unwrap();
 
         let mut file = File::create("results.csv").unwrap();

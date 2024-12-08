@@ -27,7 +27,7 @@ pub fn read_input() -> Input {
     }
 
     let mut n = 0;
-    while T > N {
+    while T > 30 {
         println!("1");
         println!("{} 0 U -1", n % N);
         input_interactive! {
