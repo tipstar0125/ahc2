@@ -16,7 +16,7 @@ mod tests {
         N: usize,
         T: usize,
         sigma: usize,
-        limit: usize,
+        ideal: usize,
         elapsed_time: f64,
         is_ac: bool,
         is_tle: bool,
@@ -36,7 +36,7 @@ mod tests {
                 self.N,
                 self.T,
                 self.sigma,
-                self.limit,
+                self.ideal,
                 self.score,
                 self.elapsed_time,
                 result
@@ -112,7 +112,7 @@ mod tests {
         let mut N = 0;
         let mut T = 0;
         let mut sigma = 0;
-        let mut limit = 0;
+        let mut ideal = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
@@ -128,8 +128,8 @@ mod tests {
             if line.starts_with("sigma = ") {
                 sigma = parse_int(line, "sigma = ");
             }
-            if line.starts_with("Limit = ") {
-                limit = parse_int(line, "Limit = ");
+            if line.starts_with("Ideal = ") {
+                ideal = parse_int(line, "Ideal = ");
             }
         }
 
@@ -145,7 +145,7 @@ mod tests {
         let delta_score = vis_score as i64 - before_score as i64;
 
         println!(
-            "{}: N={}, T={}, sigma={}, limit={}, score={}, elapsed={}, delta={}",
+            "{}: N={}, T={}, sigma={}, ideal={}, score={}, elapsed={}, delta={}",
             if vis_score == 0 {
                 test_number.to_string().red()
             } else {
@@ -154,7 +154,7 @@ mod tests {
             N,
             T,
             sigma,
-            limit,
+            ideal,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -175,7 +175,7 @@ mod tests {
             N,
             T,
             sigma,
-            limit,
+            ideal,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -217,11 +217,11 @@ mod tests {
         writeln!(
             file,
             "{}",
-            "test_num,N,T,sigma,limit,score,elapsed,result,delta"
+            "test_num,N,T,sigma,ideal,score,elapsed,result,delta"
         )
         .unwrap();
         let mut score_sum = 0;
-        let mut best_score_sum = 0;
+        let mut ideal_score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
 
@@ -229,7 +229,7 @@ mod tests {
             let delta_score = result.score as i64 - before_scores[i] as i64;
             writeln!(file, "{},{}", result, delta_score).unwrap();
             score_sum += result.score;
-            best_score_sum += result.limit;
+            ideal_score_sum += result.ideal;
             if !result.is_ac {
                 wa_cnt += 1;
             }
@@ -238,14 +238,14 @@ mod tests {
             }
         }
         let total = format!(
-            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{} best: {}",
+            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{} ideal: {}",
             score_sum / 2,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,
             tle_cnt,
             test_case_num,
-            best_score_sum / 2,
+            ideal_score_sum / 2,
         );
         println!("{}", total);
         writeln!(file, "{}", total).unwrap();

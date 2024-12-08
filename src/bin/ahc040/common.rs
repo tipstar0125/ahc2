@@ -10,7 +10,7 @@ pub fn get_time() -> f64 {
         }
         #[cfg(feature = "local")]
         {
-            (ms - STIME) * 0.55
+            (ms - STIME) * 1.0
         }
         #[cfg(not(feature = "local"))]
         {

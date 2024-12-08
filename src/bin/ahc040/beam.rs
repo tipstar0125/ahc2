@@ -150,7 +150,7 @@ impl BeamSearch {
         } else {
             cands.iter().max_by_key(|a| a.raw_score(input)).unwrap()
         };
-        eprintln!("Limit = {}", best.eval_score);
+        eprintln!("Ideal = {}", best.eval_score);
         let mut ret = self.restore(best.parent);
         ret.push(best.op.clone());
         ret

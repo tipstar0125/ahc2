@@ -54,7 +54,7 @@ pub fn read_input() -> Input {
     for (w, h) in wh.iter() {
         area += *w as f64 * *h as f64;
     }
-    let width_limit = area.sqrt() as i32 + 2e4 as i32;
+    let width_limit = area.sqrt() as i32 + 1e5 as i32;
 
     Input {
         N,

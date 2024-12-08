@@ -153,26 +153,47 @@ impl State {
                 cand.push((delta_score, score as usize, op, turn + 1 == input.N));
             };
 
-            if i == 0 && length_sum + w <= input.width_limit && j + 1 < input.calc_hash.MAX {
-                append_cand(false);
-            }
-            if i == 0 && length_sum + h <= input.width_limit && j + 1 < input.calc_hash.MAX {
-                append_cand(true);
-            }
-            if i > 0 {
-                let sigma = input.sigma * 30;
-                let up_length_sum = self.lines[i - 1].0;
-                if (length_sum + w + sigma <= up_length_sum
-                    || up_length_sum + w >= input.width_limit)
-                    && j + 1 < input.calc_hash.MAX
-                {
+            if w < h {
+                if i == 0 && length_sum + w <= input.width_limit && j + 1 < input.calc_hash.MAX {
                     append_cand(false);
                 }
-                if (length_sum + h + sigma <= up_length_sum
-                    || up_length_sum + w >= input.width_limit)
-                    && j + 1 < input.calc_hash.MAX
-                {
+            } else {
+                if i == 0 && length_sum + h <= input.width_limit && j + 1 < input.calc_hash.MAX {
                     append_cand(true);
+                }
+            }
+            if i > 0 {
+                let sigma = input.sigma * 5;
+                let up_length_sum = self.lines[i - 1].0;
+                if i <= 5 {
+                    if w < h {
+                        if (length_sum + w + sigma <= up_length_sum
+                            || up_length_sum + w >= input.width_limit)
+                            && j + 1 < input.calc_hash.MAX
+                        {
+                            append_cand(false);
+                        }
+                    } else {
+                        if (length_sum + h + sigma <= up_length_sum
+                            || up_length_sum + w >= input.width_limit)
+                            && j + 1 < input.calc_hash.MAX
+                        {
+                            append_cand(true);
+                        }
+                    }
+                } else {
+                    if (length_sum + w + sigma <= up_length_sum
+                        || up_length_sum + w >= input.width_limit)
+                        && j + 1 < input.calc_hash.MAX
+                    {
+                        append_cand(false);
+                    }
+                    if (length_sum + h + sigma <= up_length_sum
+                        || up_length_sum + w >= input.width_limit)
+                        && j + 1 < input.calc_hash.MAX
+                    {
+                        append_cand(true);
+                    }
                 }
             }
         }
