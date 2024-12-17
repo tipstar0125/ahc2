@@ -31,10 +31,48 @@ pub const P0: Pos = Pos {
 };
 
 #[derive(Debug, Clone)]
+pub struct Shelf {
+    width: i32,
+    height: i32,
+    box_num: usize,
+    right_edge: i32,
+    margin: i32,
+}
+
+impl Shelf {
+    pub fn new() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+            box_num: 0,
+            right_edge: -1,
+            margin: 0,
+        }
+    }
+    pub fn calc_margin(&self, idx: usize, rotate: bool, input: &Input) -> i32 {
+        let mut w = input.wh2[idx].0;
+        let mut h = input.wh2[idx].1;
+        if rotate {
+            std::mem::swap(&mut w, &mut h);
+        }
+
+        let shelf_width = self.width + w;
+        let shelf_height = self.height.max(h);
+
+        if input.width_limit - shelf_width < 1e4 as i32 {
+            return 0;
+        }
+
+        let margin = (input.width_limit - shelf_width) * shelf_height;
+        margin
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct State {
     pub n: usize,
-    pub pos: Vec<Pos>,                 // (x1, x2, y1, y2, rot, t)
-    pub lines: Vec<(i32, i32, usize)>, // (length sum, right edge number, cnt)
+    pub pos: Vec<Pos>, // (x1, x2, y1, y2, rot, t)
+    pub lines: Vec<Shelf>,
     pub W2: i32,
     pub H2: i32,
     pub score: usize,
@@ -43,14 +81,18 @@ pub struct State {
 
 impl State {
     pub fn new(input: &Input) -> Self {
+        let mut init_hash = 0;
+        for i in 0..input.calc_hash.MAX {
+            init_hash ^= input.calc_hash.hash_map[i][0];
+        }
         Self {
             n: input.N,
             pos: vec![],
-            lines: vec![(0, -1, 0)],
+            lines: vec![Shelf::new()],
             W2: 0,
             H2: 0,
             score: 0,
-            hash: 0,
+            hash: init_hash,
         }
     }
     pub fn calc_length(&self, c: Op, input: &Input) -> (i32, i32, Pos) {
@@ -135,7 +177,14 @@ impl State {
         let w = input.wh2[turn].0;
         let h = input.wh2[turn].1;
         for (i, line) in self.lines.iter().enumerate() {
-            let &(length_sum, right_edge, j) = line;
+            let &Shelf {
+                width,
+                height: _,
+                box_num: _,
+                right_edge,
+                margin: _,
+            } = line;
+
             let mut append_cand = |rot: bool| {
                 let mut op = Op {
                     p: turn,
@@ -148,49 +197,55 @@ impl State {
                 let (w, h, pos) = self.calc_length(op, input);
                 let score = w + h;
                 let delta_score = score as usize - self.score;
-                // let hash = input.calc_hash.calc(self.hash, i, j + 1, turn, rot);
+                let after_width = width
+                    + if rot {
+                        input.wh2[turn].1
+                    } else {
+                        input.wh2[turn].0
+                    };
+                let hash = input.calc_hash.calc(self.hash, i, width, after_width);
                 op.pos = pos;
-                cand.push((delta_score, score as usize, op, turn + 1 == input.N));
+                cand.push((delta_score, hash, op, turn + 1 == input.N));
             };
 
             if w < h {
-                if i == 0 && length_sum + w <= input.width_limit && j + 1 < input.calc_hash.MAX {
+                if i == 0 && width + w <= input.width_limit {
                     append_cand(false);
                 }
             } else {
-                if i == 0 && length_sum + h <= input.width_limit && j + 1 < input.calc_hash.MAX {
+                if i == 0 && width + h <= input.width_limit {
                     append_cand(true);
                 }
             }
             if i > 0 {
                 let sigma = input.sigma * 5;
-                let up_length_sum = self.lines[i - 1].0;
+                let up_length_sum = self.lines[i - 1].width;
                 if i <= 5 {
                     if w < h {
-                        if (length_sum + w + sigma <= up_length_sum
+                        if (width + w + sigma <= up_length_sum
                             || up_length_sum + w >= input.width_limit)
-                            && j + 1 < input.calc_hash.MAX
+                            && width + w <= input.width_limit
                         {
                             append_cand(false);
                         }
                     } else {
-                        if (length_sum + h + sigma <= up_length_sum
-                            || up_length_sum + w >= input.width_limit)
-                            && j + 1 < input.calc_hash.MAX
+                        if (width + h + sigma <= up_length_sum
+                            || up_length_sum + h >= input.width_limit)
+                            && width + h <= input.width_limit
                         {
                             append_cand(true);
                         }
                     }
                 } else {
-                    if (length_sum + w + sigma <= up_length_sum
+                    if (width + w + sigma <= up_length_sum
                         || up_length_sum + w >= input.width_limit)
-                        && j + 1 < input.calc_hash.MAX
+                        && width + w <= input.width_limit
                     {
                         append_cand(false);
                     }
-                    if (length_sum + h + sigma <= up_length_sum
-                        || up_length_sum + w >= input.width_limit)
-                        && j + 1 < input.calc_hash.MAX
+                    if (width + h + sigma <= up_length_sum
+                        || up_length_sum + h >= input.width_limit)
+                        && width + h <= input.width_limit
                     {
                         append_cand(true);
                     }
@@ -199,13 +254,16 @@ impl State {
         }
         cand
     }
-    pub fn apply(&mut self, score: usize, hash: usize, op: &Op, input: &Input) {
+    pub fn apply(&mut self, score: usize, hash: usize, op: &Op, _input: &Input) {
         let row = op.row;
-        if self.lines[row].2 == 0 && self.lines.len() < input.calc_hash.MAX {
+        if self.lines[row].box_num == 0 {
             assert!(self.lines.len() == row + 1);
-            self.lines.push((0, -1, 0));
+            self.lines.push(Shelf::new());
         }
-        self.lines[row] = (op.pos.x2 as i32, op.p as i32, self.lines[row].2 + 1);
+        self.lines[row].width = op.pos.x2;
+        self.lines[row].right_edge = op.p as i32;
+        self.lines[row].box_num += 1;
+
         self.pos.push(op.pos);
         self.score = score;
         self.hash = hash;

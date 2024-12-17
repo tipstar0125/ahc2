@@ -61,7 +61,7 @@ pub fn read_input() -> Input {
         T,
         sigma,
         wh2: wh,
-        calc_hash: CalcHash::new(N),
+        calc_hash: CalcHash::new(width_limit),
         width_limit,
     }
 }
