@@ -130,6 +130,13 @@ impl BeamSearch {
         cands.sort_unstable_by_key(|a| a.eval_score);
         for cand in cands.iter().take(input.T) {
             let mut ops = self.restore(cand.parent);
+            eprintln!(
+                "H2: {}, shelf_height: {}, shelf_margin: {}, S: {}",
+                self.nodes[cand.parent].state.H2,
+                self.nodes[cand.parent].state.shelf_height,
+                self.nodes[cand.parent].state.shelf_margin,
+                self.nodes[cand.parent].state.S - input.wh2[input.wh2.len()-1].0 as i64 *input.wh2[input.wh2.len()-1].1 as i64
+            );
             ops.push(cand.op.clone());
             println!("{}", ops.len());
             for Op {

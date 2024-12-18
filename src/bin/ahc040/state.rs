@@ -13,10 +13,10 @@ pub struct Op {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Pos {
-    pub x1: i32,
-    pub x2: i32,
-    pub y1: i32,
-    pub y2: i32,
+    pub x1: i64,
+    pub x2: i64,
+    pub y1: i64,
+    pub y2: i64,
     pub r: bool,
     pub t: i32,
 }
@@ -32,11 +32,11 @@ pub const P0: Pos = Pos {
 
 #[derive(Debug, Clone)]
 pub struct Shelf {
-    width: i32,
-    height: i32,
+    width: i64,
+    height: i64,
     box_num: usize,
     right_edge: i32,
-    margin: i32,
+    margin: i64,
 }
 
 impl Shelf {
@@ -49,7 +49,7 @@ impl Shelf {
             margin: 0,
         }
     }
-    pub fn calc_margin(&self, idx: usize, rotate: bool, input: &Input) -> i32 {
+    pub fn calc_margin(&self, idx: usize, rotate: bool, input: &Input) -> i64 {
         let mut w = input.wh2[idx].0;
         let mut h = input.wh2[idx].1;
         if rotate {
@@ -59,7 +59,7 @@ impl Shelf {
         let shelf_width = self.width + w;
         let shelf_height = self.height.max(h);
 
-        if input.width_limit - shelf_width < 1e4 as i32 {
+        if input.width_limit - shelf_width < 1e4 as i64 {
             return 0;
         }
 
@@ -73,8 +73,11 @@ pub struct State {
     pub n: usize,
     pub pos: Vec<Pos>, // (x1, x2, y1, y2, rot, t)
     pub lines: Vec<Shelf>,
-    pub W2: i32,
-    pub H2: i32,
+    pub W2: i64,
+    pub H2: i64,
+    pub shelf_height: i64,
+    pub shelf_margin: i64,
+    pub S: i64,
     pub score: usize,
     pub hash: usize,
 }
@@ -85,17 +88,25 @@ impl State {
         for i in 0..input.calc_hash.MAX {
             init_hash ^= input.calc_hash.hash_map[i][0];
         }
+        let mut S = 0;
+        for i in 0..input.N {
+            S += input.wh2[i].0 as i64 * input.wh2[i].1 as i64;
+        }
+
         Self {
             n: input.N,
             pos: vec![],
             lines: vec![Shelf::new()],
             W2: 0,
             H2: 0,
+            shelf_height: 0,
+            S,
+            shelf_margin: 0,
             score: 0,
             hash: init_hash,
         }
     }
-    pub fn calc_length(&self, c: Op, input: &Input) -> (i32, i32, Pos) {
+    pub fn calc_length(&self, c: Op, input: &Input) -> (i64, i64, Pos) {
         let (mut w, mut h) = input.wh2[c.p];
         if c.r {
             std::mem::swap(&mut w, &mut h);
@@ -179,10 +190,10 @@ impl State {
         for (i, line) in self.lines.iter().enumerate() {
             let &Shelf {
                 width,
-                height: _,
+                height,
                 box_num: _,
                 right_edge,
-                margin: _,
+                margin,
             } = line;
 
             let mut append_cand = |rot: bool| {
@@ -195,7 +206,38 @@ impl State {
                     row: i,
                 };
                 let (w, h, pos) = self.calc_length(op, input);
-                let score = w + h;
+                let raw_score = w + h;
+
+                // 更新後の棚の高さの合計を計算
+                let next_box_height = if op.r {
+                    input.wh2[op.p].0
+                } else {
+                    input.wh2[op.p].1
+                };
+                let next_height = height.max(next_box_height);
+                let delta_height = next_height - height;
+                let shelf_height = self.shelf_height + delta_height;
+
+                // 更新後の棚の余白の合計を計算
+                let row_margin = self.lines[i].calc_margin(op.p, op.r, input);
+                let delta_margin = row_margin - margin;
+                let next_margin = self.shelf_margin + delta_margin;
+
+                // まだ置いていない箱の面積の合計から、既に置かれている棚の余白の合計を引き、
+                // 将来追加する棚の面積を求める
+                let rest_S = (self.S - next_margin).max(0);
+
+                // 棚の高さの予測から、予測スコアを計算
+                let predict_height = shelf_height + (rest_S / input.width_limit);
+                let predict_score = predict_height + input.width_limit;
+
+                // ターンの進行度に応じて、予測スコアと実際のスコアを切り替える
+                let score = if (turn as f64) < input.N as f64 * 0.7 {
+                    predict_score
+                } else {
+                    raw_score
+                };
+
                 let delta_score = score as usize - self.score;
                 let after_width = width
                     + if rot {
@@ -254,20 +296,41 @@ impl State {
         }
         cand
     }
-    pub fn apply(&mut self, score: usize, hash: usize, op: &Op, _input: &Input) {
+    pub fn apply(&mut self, score: usize, hash: usize, op: &Op, input: &Input) {
         let row = op.row;
         if self.lines[row].box_num == 0 {
             assert!(self.lines.len() == row + 1);
             self.lines.push(Shelf::new());
         }
+
+        // 更新した棚の余白の差分を計算
+        let margin = self.lines[row].calc_margin(op.p, op.r, input);
+        let delta_margin = margin - self.lines[row].margin;
+
+        // 更新した棚の高さの差分を計算
+        let h = if op.r {
+            input.wh2[op.p].0
+        } else {
+            input.wh2[op.p].1
+        };
+        let height = self.lines[row].height.max(h);
+        let delta_height = height - self.lines[row].height;
+
+        // 棚の更新
+        self.lines[row].height = height;
         self.lines[row].width = op.pos.x2;
         self.lines[row].right_edge = op.p as i32;
         self.lines[row].box_num += 1;
+        self.lines[row].margin = margin;
 
         self.pos.push(op.pos);
         self.score = score;
         self.hash = hash;
+        self.shelf_height += delta_height; // 棚の高さの合計を更新
+        self.shelf_margin += delta_margin; // 棚の余白の合計を更新
+        assert!(self.shelf_margin >= 0);
         self.W2.setmax(op.pos.x2);
         self.H2.setmax(op.pos.y2);
+        self.S -= input.wh2[op.p].0 * input.wh2[op.p].1; // 残りの面積を更新
     }
 }

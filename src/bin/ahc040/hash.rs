@@ -20,7 +20,7 @@ fn gen_not_used(rng: &mut Pcg64Mcg, set: &mut HashSet<usize>) -> usize {
 }
 
 impl CalcHash {
-    pub fn new(width_limit: i32) -> Self {
+    pub fn new(width_limit: i64) -> Self {
         let mut rng = Pcg64Mcg::new(20);
         let mut used = HashSet::new();
         let MAX = 15;
@@ -34,7 +34,7 @@ impl CalcHash {
 
         Self { MAX, hash_map }
     }
-    pub fn calc(&self, mut hash: usize, row: usize, before_width: i32, after_width: i32) -> usize {
+    pub fn calc(&self, mut hash: usize, row: usize, before_width: i64, after_width: i64) -> usize {
         let bw = before_width as usize / 1e4 as usize;
         let aw = after_width as usize / 1e4 as usize;
         hash ^= self.hash_map[row][bw];

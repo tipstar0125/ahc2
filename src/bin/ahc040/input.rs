@@ -2,14 +2,14 @@ use proconio::input_interactive;
 
 use crate::hash::CalcHash;
 
-const MIN: i32 = 1e4 as i32;
-const MAX: i32 = 1e5 as i32;
+const MIN: i64 = 1e4 as i64;
+const MAX: i64 = 1e5 as i64;
 
 pub fn read_input() -> Input {
     input_interactive! {
-        N: usize, mut T: usize, sigma: i32,
-        _wh2: [(i32, i32); N],
-        // wh: [(i32, i32); N],
+        N: usize, mut T: usize, sigma: i64,
+        _wh2: [(i64, i64); N],
+        // wh: [(i64, i64); N],
     }
 
     let mut wh2 = vec![];
@@ -31,7 +31,7 @@ pub fn read_input() -> Input {
         println!("1");
         println!("{} 0 U -1", n % N);
         input_interactive! {
-            w: i32, h: i32,
+            w: i64, h: i64,
         }
         wh2_list[n % N].push((w.max(MIN).min(MAX), h.max(MIN).min(MAX)));
         n += 1;
@@ -45,8 +45,8 @@ pub fn read_input() -> Input {
             w_ave += w;
             h_ave += h;
         }
-        w_ave /= whs.len() as i32;
-        h_ave /= whs.len() as i32;
+        w_ave /= whs.len() as i64;
+        h_ave /= whs.len() as i64;
         wh.push((w_ave, h_ave));
     }
 
@@ -54,7 +54,7 @@ pub fn read_input() -> Input {
     for (w, h) in wh.iter() {
         area += *w as f64 * *h as f64;
     }
-    let width_limit = area.sqrt() as i32 + 1e5 as i32;
+    let width_limit = area.sqrt() as i64 + 1e5 as i64;
 
     Input {
         N,
@@ -70,8 +70,8 @@ pub fn read_input() -> Input {
 pub struct Input {
     pub N: usize,
     pub T: usize,
-    pub sigma: i32,
-    pub wh2: Vec<(i32, i32)>,
+    pub sigma: i64,
+    pub wh2: Vec<(i64, i64)>,
     pub calc_hash: CalcHash,
-    pub width_limit: i32,
+    pub width_limit: i64,
 }
