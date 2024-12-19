@@ -9,7 +9,11 @@ pub fn read_input() -> Input {
     input_interactive! {
         N: usize, mut T: usize, sigma: i64,
         _wh2: [(i64, i64); N],
-        // wh: [(i64, i64); N],
+    }
+    
+    #[cfg(feature = "local")]
+    input_interactive! {
+        _wh: [(i64, i64); N],
     }
 
     let mut wh2 = vec![];
