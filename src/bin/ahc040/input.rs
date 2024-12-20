@@ -26,7 +26,7 @@ pub fn read_input() -> Input {
     eprintln!("T = {}", T);
     eprintln!("sigma = {}", sigma);
 
-    let measure_num = (T as f64 * 0.8) as usize;
+    let measure_num = (T as f64 * 0.7) as usize;
     T -= measure_num;
     let modified_wh = measure(N, measure_num, sigma, wh2.clone());
 

@@ -23,7 +23,7 @@ fn solve(input: &Input) {
         state: init_state,
     };
     let mut beam = BeamSearch::new(init_node);
-    let width = if input.N <= 70 { 15000 } else { 10000 };
+    let width = if input.N <= 65 { 12000 } else { 10000 };
     beam.solve(width, input.N, &input, &mut rng, true);
 }
 

@@ -149,14 +149,11 @@ impl State {
     fn solve(&mut self) {
         let n = self.wh.len();
         let max_delta = self.sigma / 20;
-        let mut rng = Pcg64Mcg::new(10);
-        let mut order = (0..n).collect_vec();
 
-        for sep in 1..=100 {
+        for sep in 1..=200 {
             let delta = (max_delta / sep).max(1);
 
-            order.shuffle(&mut rng);
-            for &idx in order.iter() {
+            for idx in 0..n {
                 for r in 0..=1 {
                     let rotate = if r == 0 { false } else { true };
 
@@ -177,7 +174,7 @@ impl State {
                     };
 
                     let mut l = 1;
-                    let mut r = 500;
+                    let mut r = 100;
                     while r - l > 1 {
                         let m = (l + r) / 2;
                         let d = delta * m * dir;
