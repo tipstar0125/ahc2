@@ -250,47 +250,24 @@ impl State {
                 cand.push((delta_score, hash, op, turn + 1 == input.N));
             };
 
-            if w < h {
-                if i == 0 && width + w <= input.width_limit {
-                    append_cand(false);
-                }
-            } else {
-                if i == 0 && width + h <= input.width_limit {
-                    append_cand(true);
-                }
+            if i == 0 && width + w <= input.width_limit {
+                append_cand(false);
+            }
+            if i == 0 && width + h <= input.width_limit {
+                append_cand(true);
             }
             if i > 0 {
                 let sigma = input.sigma * 5;
                 let up_length_sum = self.lines[i - 1].width;
-                if i <= 5 {
-                    if w < h {
-                        if (width + w + sigma <= up_length_sum
-                            || up_length_sum + w >= input.width_limit)
-                            && width + w <= input.width_limit
-                        {
-                            append_cand(false);
-                        }
-                    } else {
-                        if (width + h + sigma <= up_length_sum
-                            || up_length_sum + h >= input.width_limit)
-                            && width + h <= input.width_limit
-                        {
-                            append_cand(true);
-                        }
-                    }
-                } else {
-                    if (width + w + sigma <= up_length_sum
-                        || up_length_sum + w >= input.width_limit)
-                        && width + w <= input.width_limit
-                    {
-                        append_cand(false);
-                    }
-                    if (width + h + sigma <= up_length_sum
-                        || up_length_sum + h >= input.width_limit)
-                        && width + h <= input.width_limit
-                    {
-                        append_cand(true);
-                    }
+                if (width + w + sigma <= up_length_sum || up_length_sum + w >= input.width_limit)
+                    && width + w <= input.width_limit
+                {
+                    append_cand(false);
+                }
+                if (width + h + sigma <= up_length_sum || up_length_sum + h >= input.width_limit)
+                    && width + h <= input.width_limit
+                {
+                    append_cand(true);
                 }
             }
         }

@@ -5,6 +5,7 @@ mod beam;
 mod common;
 mod hash;
 mod input;
+mod measure;
 mod state;
 mod test;
 
