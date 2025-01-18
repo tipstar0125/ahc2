@@ -6,7 +6,7 @@ use rand_pcg::Pcg64Mcg;
 #[derive(Debug)]
 pub struct CalcHash {
     pub MAX: usize,
-    pub hash_map: Vec<Vec<Vec<(usize, usize)>>>,
+    pub hash_map: Vec<Vec<usize>>,
 }
 
 fn gen_not_used(rng: &mut Pcg64Mcg, set: &mut HashSet<usize>) -> usize {
@@ -20,28 +20,25 @@ fn gen_not_used(rng: &mut Pcg64Mcg, set: &mut HashSet<usize>) -> usize {
 }
 
 impl CalcHash {
-    pub fn new(N: usize) -> Self {
+    pub fn new(width_limit: i64) -> Self {
         let mut rng = Pcg64Mcg::new(20);
         let mut used = HashSet::new();
         let MAX = 15;
-        let mut hash_map = vec![vec![vec![(!0, !0); N]; MAX]; MAX];
+        let L = width_limit as usize / 1e4 as usize + 5;
+        let mut hash_map = vec![vec![!0; L]; MAX];
         for i in 0..MAX {
-            for j in 0..MAX {
-                for n in 0..N {
-                    hash_map[i][j][n].0 = gen_not_used(&mut rng, &mut used);
-                    hash_map[i][j][n].1 = gen_not_used(&mut rng, &mut used);
-                }
+            for l in 0..L {
+                hash_map[i][l] = gen_not_used(&mut rng, &mut used);
             }
         }
 
         Self { MAX, hash_map }
     }
-    pub fn calc(&self, mut hash: usize, i: usize, j: usize, n: usize, rot: bool) -> usize {
-        if rot {
-            hash ^= self.hash_map[i][j][n].0;
-        } else {
-            hash ^= self.hash_map[i][j][n].1;
-        }
+    pub fn calc(&self, mut hash: usize, row: usize, before_width: i64, after_width: i64) -> usize {
+        let bw = before_width as usize / 1e4 as usize;
+        let aw = after_width as usize / 1e4 as usize;
+        hash ^= self.hash_map[row][bw];
+        hash ^= self.hash_map[row][aw];
         hash
     }
 }

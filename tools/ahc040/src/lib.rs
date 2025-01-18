@@ -543,7 +543,8 @@ pub fn exec(p: &mut std::process::Child, local: bool) -> Result<i64, String> {
     let _ = writeln!(stdin, "{} {} {}", input.N, input.T, input.sigma);
     for i in 0..input.N {
         let _ = writeln!(stdin, "{} {}", input.wh2[i].0, input.wh2[i].1);
-    }for i in 0..input.N {
+    }
+    for i in 0..input.N {
         let _ = writeln!(stdin, "{} {}", input.wh[i].0, input.wh[i].1);
     }
 

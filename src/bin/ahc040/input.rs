@@ -1,15 +1,20 @@
 use proconio::input_interactive;
 
 use crate::hash::CalcHash;
+use crate::measure::measure;
 
-const MIN: i32 = 1e4 as i32;
-const MAX: i32 = 1e5 as i32;
+const MIN: i64 = 1e4 as i64;
+const MAX: i64 = 1e5 as i64;
 
 pub fn read_input() -> Input {
     input_interactive! {
-        N: usize, mut T: usize, sigma: i32,
-        _wh2: [(i32, i32); N],
-        // wh: [(i32, i32); N],
+        N: usize, mut T: usize, sigma: i64,
+        _wh2: [(i64, i64); N],
+    }
+
+    #[cfg(feature = "local")]
+    input_interactive! {
+        _wh: [(i64, i64); N],
     }
 
     let mut wh2 = vec![];
@@ -21,47 +26,50 @@ pub fn read_input() -> Input {
     eprintln!("T = {}", T);
     eprintln!("sigma = {}", sigma);
 
-    let mut wh2_list = vec![vec![]; N];
-    for (i, (w, h)) in wh2.iter().enumerate() {
-        wh2_list[i].push((*w, *h));
+    let measure_num = (T as f64 * 0.7) as usize;
+    T -= measure_num;
+    let modified_wh = measure(N, measure_num, sigma, wh2.clone());
+
+    let mut clamped_wh = vec![];
+    for (w, h) in modified_wh {
+        clamped_wh.push((w.max(MIN).min(MAX), h.max(MIN).min(MAX)));
     }
 
-    let mut n = 0;
-    while T > 30 {
-        println!("1");
-        println!("{} 0 U -1", n % N);
-        input_interactive! {
-            w: i32, h: i32,
+    #[cfg(feature = "local")]
+    {
+        use std::fs::File;
+        use std::io::prelude::*;
+        use std::io::Write;
+        let mut file = File::create("box.csv").unwrap();
+        writeln!(file, "{}", "before,after").unwrap();
+
+        let mut before_square_sum = 0;
+        let mut after_square_sum = 0;
+        for i in 0..N {
+            let (w0, h0) = _wh[i];
+            let (w1, h1) = wh2[i];
+            before_square_sum += (w1 - w0) * (w1 - w0) + (h1 - h0) * (h1 - h0);
+            let (w2, h2) = clamped_wh[i];
+            after_square_sum += (w2 - w0) * (w2 - w0) + (h2 - h0) * (h2 - h0);
+            writeln!(file, "{},{}", w1 - w0, w2 - w0).unwrap();
+            writeln!(file, "{},{}", h1 - h0, h2 - h0).unwrap();
         }
-        wh2_list[n % N].push((w.max(MIN).min(MAX), h.max(MIN).min(MAX)));
-        n += 1;
-        T -= 1;
-    }
-    let mut wh = vec![];
-    for whs in wh2_list.iter() {
-        let mut w_ave = 0;
-        let mut h_ave = 0;
-        for (w, h) in whs.iter() {
-            w_ave += w;
-            h_ave += h;
-        }
-        w_ave /= whs.len() as i32;
-        h_ave /= whs.len() as i32;
-        wh.push((w_ave, h_ave));
+        eprintln!("before_square_sum = {}", before_square_sum);
+        eprintln!("after_square_sum = {}", after_square_sum);
     }
 
     let mut area = 0.0;
-    for (w, h) in wh.iter() {
+    for (w, h) in clamped_wh.iter() {
         area += *w as f64 * *h as f64;
     }
-    let width_limit = area.sqrt() as i32 + 1e5 as i32;
+    let width_limit = area.sqrt() as i64 + 1e5 as i64;
 
     Input {
         N,
         T,
         sigma,
-        wh2: wh,
-        calc_hash: CalcHash::new(N),
+        wh2: clamped_wh,
+        calc_hash: CalcHash::new(width_limit),
         width_limit,
     }
 }
@@ -70,8 +78,8 @@ pub fn read_input() -> Input {
 pub struct Input {
     pub N: usize,
     pub T: usize,
-    pub sigma: i32,
-    pub wh2: Vec<(i32, i32)>,
+    pub sigma: i64,
+    pub wh2: Vec<(i64, i64)>,
     pub calc_hash: CalcHash,
-    pub width_limit: i32,
+    pub width_limit: i64,
 }
