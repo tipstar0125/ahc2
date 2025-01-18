@@ -1,10 +1,16 @@
+use itertools::iproduct;
+use rand::Rng;
+use rand_pcg::Pcg64Mcg;
+
 use crate::{
-    coord::{Coord, DIJ4, DIJ5},
+    common::get_time,
+    coord::{calc_manhattan_dist, Coord, DIJ4, DIJ5},
     state::{to_direction, to_rotate_direction, Direction, MoveAction},
 };
 
 #[derive(Debug)]
 pub struct Arm {
+    N: usize,
     pub start: Coord,
     pub not_finger_arm_num: usize,
     pub finger_num: usize,
@@ -14,47 +20,28 @@ pub struct Arm {
 }
 
 impl Arm {
-    pub fn new(N: usize, V: usize) -> Self {
-        // 長さ2から始めて、2冪の腕を、腕の総和がN/2以上になるまで追加
-        let mut arm_length = vec![];
+    pub fn new(N: usize, V: usize, not_finger_arm_num: usize) -> Self {
+        let finger_num = V - not_finger_arm_num - 1;
+        let mut lengths = vec![];
         let mut parents = vec![];
-        let mut v_cnt = 1;
-        let mut arm_length_sum = 0;
-        let arm_delta = if N >= 25 { 7 } else { 3 };
-        while arm_length_sum < N / 2 && v_cnt < V {
-            let length = arm_delta * v_cnt;
-            arm_length.push(length);
-            parents.push(v_cnt - 1);
-            arm_length_sum += length;
-            v_cnt += 1;
+        for idx in 0..not_finger_arm_num {
+            lengths.push(1 << (idx + 1));
+            parents.push(idx);
         }
-
-        // 腕の先端に先端が指になる腕を追加
-        let mut length = 0;
         let mut fingers = vec![];
-        let finger_parent = arm_length.len();
-        while v_cnt < V {
-            arm_length.push(length % N + 1); // 長さが1～nの範囲になるように制限
-            fingers.push(v_cnt - 1);
-            parents.push(finger_parent);
-            length += 1;
-            v_cnt += 1;
-        }
 
-        // 指がない場合は、最先端の腕を指とする
-        if fingers.is_empty() {
-            fingers.push(arm_length.len() - 1);
+        for idx in not_finger_arm_num..V - 1 {
+            parents.push(not_finger_arm_num);
+            fingers.push(idx);
+            lengths.push(N / 2);
         }
-        let finger_num = fingers.len();
-        assert!(finger_num > 0);
-        assert!(arm_length.len() == V - 1);
-        assert!(arm_length.len() == parents.len());
 
         Self {
+            N,
             start: Coord::new(N / 2, N / 2),
+            not_finger_arm_num,
             finger_num,
-            not_finger_arm_num: V - finger_num - 1, // rootを除く
-            lengths: arm_length,
+            lengths,
             fingers,
             parents,
         }
@@ -91,11 +78,11 @@ impl Arm {
         }
         ret
     }
-    pub fn can_reach(&self, N: usize, opposite: bool) -> Vec<Vec<usize>> {
+    pub fn can_reach(&self, opposite: bool) -> Vec<Vec<usize>> {
         let arm_direction = vec![Direction::Right; self.lengths.len()];
         let finger_parent_relative_positions =
             self.finger_parent_relative_position(&arm_direction, opposite);
-        let mut can_reach = vec![vec![0; N]; N];
+        let mut can_reach = vec![vec![0; self.N]; self.N];
         for (pos, action) in finger_parent_relative_positions.iter() {
             let parent_pos = self.start + *pos;
             // 指がついた腕に伝搬される累積回転数を求める
@@ -115,7 +102,7 @@ impl Arm {
                     for i in 0..=4 {
                         let delta = DIJ5[i];
                         let pos = finger_pos + delta;
-                        if (self.start + delta).in_map(N) && pos.in_map(N) {
+                        if (self.start + delta).in_map(self.N) && pos.in_map(self.N) {
                             can_reach[pos.i][pos.j] += 1;
                         }
                     }
@@ -123,6 +110,64 @@ impl Arm {
             }
         }
         can_reach
+    }
+    fn calc_score(&self, can_reach: &Vec<Vec<usize>>, base: usize) -> usize {
+        let mut range_score = 0;
+        let mut comprehensiveness = 0;
+        let center = Coord::new(self.N / 2, self.N / 2);
+        for (i, j) in iproduct!(0..self.N, 0..self.N) {
+            let pos = Coord::new(i, j);
+            let dist = calc_manhattan_dist(pos, center);
+            let num = can_reach[i][j];
+            if num > 0 {
+                comprehensiveness += 1;
+            }
+
+            let mut cnt = 1;
+            while cnt <= num {
+                let mut s = dist;
+                for _ in 0..cnt {
+                    s /= 2;
+                }
+                range_score += s;
+                cnt += 1;
+            }
+        }
+        range_score + comprehensiveness * base / self.N / self.N
+    }
+    pub fn climbing(&mut self, time_limit: f64, rng: &mut Pcg64Mcg) -> usize {
+        let center = Coord::new(self.N / 2, self.N / 2);
+        let mut base = 0;
+        for (i, j) in iproduct!(0..self.N, 0..self.N) {
+            let pos = Coord::new(i, j);
+            base += calc_manhattan_dist(pos, center);
+        }
+        let opposite = false;
+        let mut best_score = self.calc_score(&self.can_reach(opposite), base);
+        eprintln!("Initial Arm Score = {}", best_score);
+
+        while get_time() < time_limit {
+            let arm_idx = rng.gen_range(0..self.lengths.len());
+            let before_length = self.lengths[arm_idx];
+            if rng.gen_bool(0.5) {
+                self.lengths[arm_idx] = (before_length + rng.gen_range(1..self.N)).min(self.N - 1);
+            } else {
+                let mut length = before_length - rng.gen_range(1..self.N);
+                if length >= self.N || length == 0 {
+                    length = 1;
+                }
+                self.lengths[arm_idx] = length;
+            }
+            let score = self.calc_score(&self.can_reach(opposite), base);
+            if score > best_score {
+                best_score = score;
+            } else {
+                self.lengths[arm_idx] = before_length;
+            }
+        }
+
+        eprintln!("Final Arm Score = {}", best_score);
+        best_score
     }
     pub fn output(&self) -> String {
         let mut output = "".to_string();
@@ -140,17 +185,17 @@ impl Arm {
 
 #[cfg(test)]
 mod tests {
+    use crate::common::get_time;
+
     use super::Arm;
     use colored::*;
+    use rand_pcg::Pcg64Mcg;
 
-    #[test]
-    fn arm() {
-        let N = 25;
-        let V = 15;
-        let arm = Arm::new(N, V);
-        println!("N: {}, V: {}", N, V);
-        let can_reach_one_step = arm.can_reach(N, false);
-        let can_reach_two_step = arm.can_reach(N, true);
+    fn output(
+        N: usize,
+        can_reach_one_step: &Vec<Vec<usize>>,
+        can_reach_two_step: &Vec<Vec<usize>>,
+    ) {
         for i in 0..N {
             for j in 0..N {
                 if can_reach_one_step[i][j] >= 4 {
@@ -181,5 +226,31 @@ mod tests {
             }
             println!();
         }
+    }
+
+    #[test]
+    fn arm() {
+        let N = 15;
+        let V = 6;
+        let time_limit = 0.25;
+        let mut rng = Pcg64Mcg::new(100);
+        println!("N: {}, V: {}", N, V);
+
+        println!("Arm 2");
+        let start = get_time();
+        let mut arm2 = Arm::new(N, V, 2);
+        output(N, &arm2.can_reach(false), &arm2.can_reach(true));
+        let score2 = arm2.climbing(start + time_limit, &mut rng);
+        output(N, &arm2.can_reach(false), &arm2.can_reach(true));
+        eprintln!("Arm2: {:?}", arm2);
+
+        println!("Arm 3");
+        let start = get_time();
+        let mut arm3 = Arm::new(N, V, 3);
+        output(N, &arm3.can_reach(false), &arm3.can_reach(true));
+        let score3 = arm3.climbing(start + time_limit, &mut rng);
+        output(N, &arm3.can_reach(false), &arm3.can_reach(true));
+        eprintln!("Arm3: {:?}", arm3);
+        println!("Score2: {}, Score3: {}", score2, score3);
     }
 }
