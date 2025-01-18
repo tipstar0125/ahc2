@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn multi() {
-        let job_num = 1;
+        let job_num = 4;
         let test_case_num = 100;
         let results = cocurrent(job_num, run, (0..test_case_num).collect_vec());
         let mut file = File::create("results.csv").unwrap();
@@ -167,7 +167,7 @@ mod tests {
         }
         let total = format!(
             "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
-            score_sum,
+            score_sum * 150 / 100,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,

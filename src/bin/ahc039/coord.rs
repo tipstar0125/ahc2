@@ -44,6 +44,10 @@ impl std::ops::Add<Coord> for Coord {
     }
 }
 
-pub fn calc_dist2(a: &Coord, b: &Coord) -> usize {
+pub fn calc_manhattan_dist(a: Coord, b: Coord) -> usize {
+    a.x.abs_diff(b.x) + a.y.abs_diff(b.y)
+}
+
+pub fn calc_dist2(a: Coord, b: Coord) -> usize {
     a.x.wrapping_sub(b.x).wrapping_pow(2) + a.y.wrapping_sub(b.y).wrapping_pow(2)
 }
