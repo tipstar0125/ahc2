@@ -1,3 +1,5 @@
+use std::vec;
+
 use proconio::input;
 
 pub fn read_input() -> Input {
@@ -5,11 +7,18 @@ pub fn read_input() -> Input {
         N: usize,
         M: usize,
         H: usize,
+        A: [usize; N],
         UV: [(usize, usize); M],
         XY: [(usize, usize); N],
     }
 
-    Input { N, M, H, UV, XY }
+    let mut G = vec![vec![]; N];
+    for (u, v) in UV {
+        G[u].push(v);
+        G[v].push(u);
+    }
+
+    Input { N, M, H, A, G }
 }
 
 #[derive(Debug)]
@@ -17,6 +26,6 @@ pub struct Input {
     pub N: usize,
     pub M: usize,
     pub H: usize,
-    pub UV: Vec<(usize, usize)>,
-    pub XY: Vec<(usize, usize)>,
+    pub A: Vec<usize>,
+    pub G: Vec<Vec<usize>>,
 }
