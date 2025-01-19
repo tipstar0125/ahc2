@@ -10,7 +10,9 @@ mod input;
 mod state;
 mod test;
 
-fn solve(input: &Input) {}
+fn solve(input: &Input) {
+    eprintln!("input = {:?}", input);
+}
 
 fn main() {
     get_time();
