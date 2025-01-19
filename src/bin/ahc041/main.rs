@@ -58,11 +58,11 @@ fn solve(input: &Input) {
                 used[next] = true;
                 route.push(next);
                 Q.push_back(next);
-                if route.len() == input.H - 2 {
+                if route.len() == input.H - 3 {
                     break;
                 }
             }
-            let mut before_leafs = vec![];
+            let mut before2_leafs = vec![];
             let last_node = route[route.len() - 1];
             for nxt in input.G[last_node].iter() {
                 if used[*nxt] {
@@ -70,18 +70,19 @@ fn solve(input: &Input) {
                 }
                 used[*nxt] = true;
                 used_cnt += 1;
-                before_leafs.push(*nxt);
+                before2_leafs.push(*nxt);
             }
             score += input.A[root];
             for i in 1..route.len() {
                 ans[route[i]] = route[i - 1] as i32;
                 score += input.A[route[i]] * (i + 1);
             }
-            for i in 0..before_leafs.len() {
-                ans[before_leafs[i]] = last_node as i32;
-                score += input.A[before_leafs[i]] * (route.len() + 1);
+            for i in 0..before2_leafs.len() {
+                ans[before2_leafs[i]] = last_node as i32;
+                score += input.A[before2_leafs[i]] * (route.len() + 1);
             }
-            for i in before_leafs.iter() {
+            let mut before_leafs = vec![];
+            for i in before2_leafs.iter() {
                 for nxt in input.G[*i].iter() {
                     if used[*nxt] {
                         continue;
@@ -89,7 +90,19 @@ fn solve(input: &Input) {
                     used[*nxt] = true;
                     used_cnt += 1;
                     ans[*nxt] = *i as i32;
+                    before_leafs.push(*nxt);
                     score += input.A[*nxt] * (route.len() + 2);
+                }
+            }
+            for i in 0..before_leafs.len() {
+                for nxt in input.G[before_leafs[i]].iter() {
+                    if used[*nxt] {
+                        continue;
+                    }
+                    used[*nxt] = true;
+                    used_cnt += 1;
+                    ans[*nxt] = before_leafs[i] as i32;
+                    score += input.A[*nxt] * (route.len() + 3);
                 }
             }
         }
