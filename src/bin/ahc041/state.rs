@@ -12,11 +12,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(n: usize) -> Self {
+    pub fn new(input: &Input) -> Self {
         Self {
-            score: 0,
-            parents: vec![-1; n],
-            children: vec![vec![]; n],
+            score: input.A.iter().sum::<usize>() + 1,
+            parents: vec![-1; input.N],
+            children: vec![vec![]; input.N],
         }
     }
     pub fn greedy(&mut self, input: &Input) {

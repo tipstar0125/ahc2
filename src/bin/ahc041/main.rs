@@ -1,10 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::collections::VecDeque;
-
 use input::Input;
-use itertools::Itertools;
 
 use crate::{common::get_time, input::read_input};
 
@@ -14,8 +11,7 @@ mod state;
 mod test;
 
 fn solve(input: &Input) {
-    let mut state = state::State::new(input.N);
-    state.greedy(input);
+    let mut state = state::State::new(input);
     state.output();
 }
 
