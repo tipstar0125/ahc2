@@ -13,10 +13,6 @@ mod tests {
     struct Result {
         test_number: String,
         score: usize,
-        N: usize,
-        T: usize,
-        sigma: usize,
-        ideal: usize,
         elapsed_time: f64,
         is_ac: bool,
         is_tle: bool,
@@ -31,15 +27,8 @@ mod tests {
             }
             write!(
                 f,
-                "{},{},{},{},{},{},{},{}",
-                self.test_number,
-                self.N,
-                self.T,
-                self.sigma,
-                self.ideal,
-                self.score,
-                self.elapsed_time,
-                result
+                "{},{},{},{}",
+                self.test_number, self.score, self.elapsed_time, result
             )?;
             Ok(())
         }
@@ -86,7 +75,7 @@ mod tests {
         let test_number = format!("{:04}", test_number);
 
         // TLE設定
-        const TLE: f64 = 3.0;
+        const TLE: f64 = 2.0;
 
         // --binで指定するディレクトリを取得
         let exe_file_path = env::args().collect::<Vec<String>>()[0].clone();
@@ -101,7 +90,7 @@ mod tests {
         // run + visualize
         // exp: makers run ahc038 0000
         let run_output = Command::new("makers")
-            .args(["interactive", exe_filename, test_number.as_str()])
+            .args(["run", exe_filename, test_number.as_str()])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -109,27 +98,11 @@ mod tests {
 
         // 標準エラー出力よりスコアと実行時間を取得
         let mut elapsed_time = 0.0;
-        let mut N = 0;
-        let mut T = 0;
-        let mut sigma = 0;
-        let mut ideal = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
             if line.starts_with("Elapsed time = ") {
                 elapsed_time = parse_elapsed_time(line);
-            }
-            if line.starts_with("N = ") {
-                N = parse_int(line, "N = ");
-            }
-            if line.starts_with("T = ") {
-                T = parse_int(line, "T = ");
-            }
-            if line.starts_with("sigma = ") {
-                sigma = parse_int(line, "sigma = ");
-            }
-            if line.starts_with("Ideal = ") {
-                ideal = parse_int(line, "Ideal = ");
             }
         }
 
@@ -145,16 +118,12 @@ mod tests {
         let delta_score = vis_score as i64 - before_score as i64;
 
         println!(
-            "{}: N={}, T={}, sigma={}, ideal={}, score={}, elapsed={}, delta={}",
+            "{}: score={}, elapsed={}, delta={}",
             if vis_score == 0 {
                 test_number.to_string().red()
             } else {
                 test_number.to_string().green()
             },
-            N,
-            T,
-            sigma,
-            ideal,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -172,10 +141,6 @@ mod tests {
 
         Result {
             test_number,
-            N,
-            T,
-            sigma,
-            ideal,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -214,14 +179,8 @@ mod tests {
         writeln!(json_file, "{}", serde_json::to_string(&results).unwrap()).unwrap();
 
         let mut file = File::create("results.csv").unwrap();
-        writeln!(
-            file,
-            "{}",
-            "test_num,N,T,sigma,ideal,score,elapsed,result,delta"
-        )
-        .unwrap();
+        writeln!(file, "{}", "test_num,score,elapsed,result,delta").unwrap();
         let mut score_sum = 0;
-        let mut ideal_score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
 
@@ -229,7 +188,6 @@ mod tests {
             let delta_score = result.score as i64 - before_scores[i] as i64;
             writeln!(file, "{},{}", result, delta_score).unwrap();
             score_sum += result.score;
-            ideal_score_sum += result.ideal;
             if !result.is_ac {
                 wa_cnt += 1;
             }
@@ -238,14 +196,13 @@ mod tests {
             }
         }
         let total = format!(
-            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{} ideal: {}",
-            score_sum / 2,
+            "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
+            score_sum * 3 / 2,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,
             tle_cnt,
             test_case_num,
-            ideal_score_sum / 2,
         );
         println!("{}", total);
         writeln!(file, "{}", total).unwrap();

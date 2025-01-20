@@ -5,8 +5,6 @@ use std::collections::VecDeque;
 
 use input::Input;
 use itertools::Itertools;
-use rand::Rng;
-use rand_pcg::Pcg64Mcg;
 
 use crate::{common::get_time, input::read_input};
 
@@ -16,111 +14,106 @@ mod state;
 mod test;
 
 fn solve(input: &Input) {
-    let mut best_ans = vec![-1; input.N];
-    let mut best_score = 0;
-    let mut rng = Pcg64Mcg::new(100);
+    let mut used = vec![false; input.N];
+    let mut used_cnt = 0;
+    let mut ans = vec![-1; input.N];
+    let mut score = 1;
+    let mut order = input
+        .A
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(i, a)| (a, i))
+        .collect_vec();
+    order.sort();
 
-    while get_time() < 1.95 {
-        let mut used = vec![false; input.N];
-        let mut used_cnt = 0;
-        let mut ans = vec![-1; input.N];
-        let mut score = 1;
-        while used_cnt < input.N {
-            let mut best_part_score = 0;
-            let mut best_part_used = vec![];
-            let mut best_part_ans = vec![];
-
-            for _ in 0..500 {
-                let mut used_ = used.clone();
-                let mut part_score = 0;
-                let mut part_used = vec![];
-                let mut part_ans = vec![];
-
-                let mut root = !0;
-                loop {
-                    let i = rng.gen_range(0..input.N);
-                    if used[i] {
-                        continue;
-                    }
-                    root = i;
+    while used_cnt < input.N {
+        let root = {
+            let mut ret = !0;
+            for (_, i) in order.iter() {
+                if !used[*i] {
+                    ret = *i;
                     break;
                 }
+            }
+            ret
+        };
 
-                part_used.push(root);
-                used_[root] = true;
+        let mut Q = VecDeque::new();
+        let mut routes = vec![];
+        let route = vec![root];
+        let remain = 5;
+        Q.push_back(route);
+        while let Some(route) = Q.pop_front() {
+            if route.len() == input.H + 1 - remain {
+                routes.push(route);
+                continue;
+            }
+            let pos = *route.last().unwrap();
+            let mut exists = false;
+            for nxt in input.G[pos].iter() {
+                if used[*nxt] || route.contains(nxt) {
+                    continue;
+                }
+                exists = true;
+                let mut next_route = route.clone();
+                next_route.push(*nxt);
+                Q.push_back(next_route);
+            }
+            if !exists {
+                routes.push(route);
+            }
+        }
 
-                let mut Q = VecDeque::new();
-                let mut route = vec![root];
-                let remain = 5;
-                Q.push_back(root);
-                while let Some(pos) = Q.pop_front() {
-                    let mut next_cands = vec![];
-                    for nxt in input.G[pos].iter() {
-                        if used_[*nxt] {
+        let mut best_part_score = 0;
+        let mut best_part_ans = vec![];
+        let mut best_used_cnt = 0;
+
+        for route in routes.iter() {
+            let mut part_used = used.clone();
+            let mut part_score = input.A[root];
+            let mut part_ans = vec![(root, -1)];
+            let mut part_used_cnt = 1;
+            part_used[root] = true;
+            for i in 1..route.len() {
+                part_score += input.A[route[i]] * (i + 1);
+                part_used[route[i]] = true;
+                part_ans.push((route[i], route[i - 1] as i32));
+                part_used_cnt += 1;
+            }
+
+            let mut now = vec![route[route.len() - 1]];
+            for r in 0..remain {
+                let mut next = vec![];
+                for i in now.iter() {
+                    for nxt in input.G[*i].iter() {
+                        if part_used[*nxt] {
                             continue;
                         }
-                        next_cands.push((input.A[*nxt], *nxt));
-                    }
-                    if next_cands.is_empty() {
-                        break;
-                    }
-                    next_cands.sort();
-                    let (_, next) = next_cands.pop().unwrap();
-                    used_[next] = true;
-                    part_used.push(next);
-                    route.push(next);
-                    Q.push_back(next);
-                    if route.len() == input.H - remain {
-                        break;
+                        part_used[*nxt] = true;
+                        part_used_cnt += 1;
+                        part_score += input.A[*nxt] * (route.len() + r + 1);
+                        part_ans.push((*nxt, *i as i32));
+                        next.push(*nxt);
                     }
                 }
-
-                part_score += input.A[root];
-                for i in 1..route.len() {
-                    part_ans.push((route[i - 1], route[i]));
-                    part_score += input.A[route[i]] * (i + 1);
-                }
-
-                let mut now = vec![route[route.len() - 1]];
-                for r in 0..remain {
-                    let mut next = vec![];
-                    for i in now.iter() {
-                        for nxt in input.G[*i].iter() {
-                            if used_[*nxt] {
-                                continue;
-                            }
-                            used_[*nxt] = true;
-                            part_used.push(*nxt);
-                            part_score += input.A[*nxt] * (route.len() + r + 1);
-                            part_ans.push((*i, *nxt));
-                            next.push(*nxt);
-                        }
-                    }
-                    now = next;
-                }
-                if part_score > best_part_score {
-                    best_part_score = part_score;
-                    best_part_used = part_used;
-                    best_part_ans = part_ans;
-                }
+                now = next;
             }
-
-            for i in best_part_used.iter() {
-                used[*i] = true;
-            }
-            used_cnt += best_part_used.len();
-            score += best_part_score;
-            for (a, b) in best_part_ans {
-                ans[b] = a as i32;
+            if part_score > best_part_score {
+                best_part_score = part_score;
+                best_part_ans = part_ans;
+                best_used_cnt = part_used_cnt;
             }
         }
-        if score > best_score {
-            best_score = score;
-            best_ans = ans.clone();
+        score += best_part_score;
+        used_cnt += best_used_cnt;
+        for (c, p) in best_part_ans.iter() {
+            used[*c] = true;
+            ans[*c] = *p;
         }
     }
-    eprintln!("best_score = {}", best_score);
-    println!("{}", best_ans.iter().join(" "));
+    eprintln!("Score = {}", score);
+    println!("{}", ans.iter().join(" "));
 }
 
 fn main() {
