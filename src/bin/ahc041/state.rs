@@ -182,16 +182,22 @@ impl State {
         let T0 = 1.0;
         let T1 = 0.1;
         let mut rng = Pcg64Mcg::new(100);
-
+        let mut iter = 0;
+        let mut valid_iter = 0;
+        let mut update_iter = 0;
         while get_time() < tle {
             let node_id = rng.gen_range(0..self.nodes.len());
             let neighbor_id = input.G[node_id][rng.gen_range(0..input.G[node_id].len())];
+            iter += 1;
             if !self.is_valid(&self.nodes[node_id], &self.nodes[neighbor_id], input) {
                 continue;
             }
+            valid_iter += 1;
             let diff_score = self.calc_diff_score(&self.nodes[node_id], &self.nodes[neighbor_id]);
             let temp = T0 + (T1 - T0) * get_time() / tle;
-            if diff_score >= 0 || rng.gen_bool((diff_score as f64 / temp).exp()) {
+            // if diff_score > 0 || rng.gen_bool((diff_score as f64 / temp).exp()) {
+            if diff_score > 0 {
+                update_iter += 1;
                 self.score += diff_score;
 
                 // 付け替え元の親の更新
@@ -248,8 +254,14 @@ impl State {
                         change_parent_ids.push(self.nodes[id].parent as usize);
                     }
                 }
+                if diff_score > 0 {
+                    self.output();
+                }
             }
         }
+        eprintln!("iter = {}", iter);
+        eprintln!("valid_iter = {}", valid_iter);
+        eprintln!("update_iter = {}", update_iter);
     }
     pub fn is_valid(&self, child: &Node, parent: &Node, input: &Input) -> bool {
         // 親の変更なし
@@ -278,7 +290,7 @@ impl State {
         diff_h * child.sum_A as i64
     }
     pub fn output(&self) {
-        eprintln!("Score = {}", self.score);
+        // eprintln!("Score = {}", self.score);
         let ans = self
             .nodes
             .iter()

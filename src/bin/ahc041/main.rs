@@ -14,6 +14,7 @@ fn solve(input: &Input) {
     let mut state = state::State::new(input);
     state.greedy(input);
     state.annealing(input);
+    eprintln!("Score = {}", state.score);
     state.output();
 }
 
