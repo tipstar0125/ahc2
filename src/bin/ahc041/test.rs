@@ -133,9 +133,9 @@ mod tests {
             if delta_score == 0 {
                 delta_score.to_string().white()
             } else if delta_score < 0 {
-                delta_score.to_string().green()
-            } else {
                 delta_score.to_string().red()
+            } else {
+                delta_score.to_string().green()
             }
         );
 
