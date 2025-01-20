@@ -7,7 +7,7 @@ pub fn read_input() -> Input {
         N: usize,
         M: usize,
         H: usize,
-        A: [usize; N],
+        A: [i64; N],
         UV: [(usize, usize); M],
         XY: [(usize, usize); N],
     }
@@ -26,6 +26,6 @@ pub struct Input {
     pub N: usize,
     pub M: usize,
     pub H: usize,
-    pub A: Vec<usize>,
+    pub A: Vec<i64>,
     pub G: Vec<Vec<usize>>,
 }
