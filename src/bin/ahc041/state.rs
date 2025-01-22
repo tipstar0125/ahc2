@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, BinaryHeap, VecDeque};
 
 use itertools::Itertools;
 use rand::Rng;
@@ -14,6 +14,15 @@ pub struct Node {
     pub children: Vec<usize>,
     pub sum_A: i64,
     pub hmax: i64,
+}
+
+impl Node {
+    pub fn is_root(&self) -> bool {
+        self.parent == -1
+    }
+    pub fn is_leaf(&self) -> bool {
+        self.children.is_empty()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -243,36 +252,43 @@ impl State {
         for (c, p) in ans.iter().enumerate() {
             if *p != -1 {
                 self.nodes[*p as usize].children.push(c);
-                self.nodes[c].parent = *p as i64;
             }
+            self.nodes[c].parent = *p as i64;
         }
         for i in 0..input.N {
-            if self.nodes[i].parent == -1 {
+            if self.nodes[i].is_root() {
                 let mut Q = vec![];
                 let mut leafs = vec![];
                 Q.push((i, 0));
                 while let Some((id, h)) = Q.pop() {
                     self.nodes[id].h = h;
-                    if self.nodes[id].children.is_empty() {
+                    if self.nodes[id].is_leaf() {
                         leafs.push(id);
                     }
                     for child_id in self.nodes[id].children.iter() {
                         Q.push((*child_id, h + 1));
                     }
                 }
-                let mut Q = VecDeque::new();
+
+                let mut Q = BinaryHeap::new();
+                let mut used = BTreeSet::new();
                 for id in leafs.iter() {
                     self.nodes[*id].hmax = self.nodes[*id].h;
                     self.nodes[*id].sum_A = input.A[*id] as i64;
-                    Q.push_back(*id);
+                    Q.push((self.nodes[*id].h, *id));
+                    used.insert(*id);
                 }
-                while let Some(id) = Q.pop_front() {
-                    if self.nodes[id].parent != -1 {
+                while let Some((_, id)) = Q.pop() {
+                    if !self.nodes[id].is_root() {
                         let parent_id = self.nodes[id].parent as usize;
                         self.nodes[parent_id].hmax =
                             self.nodes[parent_id].hmax.max(self.nodes[id].hmax);
                         self.nodes[parent_id].sum_A += self.nodes[id].sum_A;
-                        Q.push_back(parent_id);
+                        if used.contains(&parent_id) {
+                            continue;
+                        }
+                        used.insert(parent_id);
+                        Q.push((self.nodes[parent_id].h, parent_id));
                     }
                 }
             }
@@ -280,12 +296,13 @@ impl State {
     }
     pub fn annealing(&mut self, input: &Input) {
         let tle = 1.95;
-        let T0 = 1.0;
+        let T0 = 100.0;
         let T1 = 0.1;
         let mut rng = Pcg64Mcg::new(100);
         let mut iter = 0;
         let mut valid_iter = 0;
         let mut update_iter = 0;
+
         while get_time() < tle {
             let node_id = rng.gen_range(0..self.nodes.len());
             let neighbor_id = input.G[node_id][rng.gen_range(0..input.G[node_id].len())];
@@ -296,67 +313,54 @@ impl State {
             valid_iter += 1;
             let diff_score = self.calc_diff_score(&self.nodes[node_id], &self.nodes[neighbor_id]);
             let temp = T0 + (T1 - T0) * get_time() / tle;
-            // if diff_score > 0 || rng.gen_bool((diff_score as f64 / temp).exp()) {
-            if diff_score > 0 {
+            if diff_score > 0 || rng.gen_bool((diff_score as f64 / temp).exp()) {
+                if self.is_loop(&self.nodes[node_id], &self.nodes[neighbor_id]) {
+                    continue;
+                }
                 update_iter += 1;
                 self.score += diff_score;
 
-                // 付け替え元の親の更新
-                let before_parent_id = self.nodes[node_id].parent as usize;
-                if before_parent_id != !0 {
-                    self.nodes[before_parent_id]
-                        .children
-                        .retain(|&x| x != node_id);
-
-                    let mut change_parent_ids = vec![before_parent_id];
-                    let hmax = self.nodes[before_parent_id]
-                        .children
-                        .iter()
-                        .map(|&id| self.nodes[id].hmax)
-                        .max()
-                        .unwrap_or(0);
-                    assert!(hmax <= input.H as i64);
-                    while let Some(id) = change_parent_ids.pop() {
-                        self.nodes[id].sum_A -= self.nodes[node_id].sum_A;
-                        self.nodes[id].hmax = self.nodes[id].hmax.max(hmax);
-                        if self.nodes[id].parent != -1 {
-                            change_parent_ids.push(self.nodes[id].parent as usize);
-                        }
+                // 付け替え元の親とその祖先の更新
+                if !self.nodes[node_id].is_root() {
+                    let mut parent_id = self.nodes[node_id].parent as usize;
+                    // 付け替え元の親の子からnode_idを削除
+                    self.nodes[parent_id].children.retain(|&x| x != node_id);
+                    while parent_id != !0 {
+                        self.nodes[parent_id].sum_A -= self.nodes[node_id].sum_A;
+                        self.nodes[parent_id].hmax = self.nodes[parent_id]
+                            .children
+                            .iter()
+                            .map(|&id| self.nodes[id].hmax)
+                            .max()
+                            .unwrap_or(self.nodes[parent_id].h);
+                        parent_id = self.nodes[parent_id].parent as usize;
                     }
                 }
 
-                // 付け替えるNodeの更新
+                // 付け替えるNodeとその子孫の更新
                 self.nodes[node_id].parent = neighbor_id as i64;
                 let diff_h = (self.nodes[neighbor_id].h + 1) - self.nodes[node_id].h;
                 let mut change_node_ids = vec![node_id];
                 while let Some(id) = change_node_ids.pop() {
                     self.nodes[id].h += diff_h;
                     self.nodes[id].hmax += diff_h;
-                    assert!(self.nodes[id].hmax <= input.H as i64);
                     for child_id in self.nodes[id].children.iter() {
                         change_node_ids.push(*child_id);
                     }
                 }
 
-                // 付け替え先の親の更新
+                // 付け替え先の親とその祖先の更新
                 self.nodes[neighbor_id].children.push(node_id);
-                let mut change_parent_ids = vec![neighbor_id];
-                let hmax = self.nodes[neighbor_id]
-                    .children
-                    .iter()
-                    .map(|&id| self.nodes[id].hmax)
-                    .max()
-                    .unwrap();
-                assert!(hmax <= input.H as i64);
-                while let Some(id) = change_parent_ids.pop() {
-                    self.nodes[id].sum_A += self.nodes[node_id].sum_A;
-                    self.nodes[id].hmax = self.nodes[id].hmax.max(hmax);
-                    if self.nodes[id].parent != -1 {
-                        change_parent_ids.push(self.nodes[id].parent as usize);
-                    }
-                }
-                if diff_score > 0 {
-                    self.output();
+                let mut parent_id = neighbor_id;
+                while parent_id != !0 {
+                    self.nodes[parent_id].sum_A += self.nodes[node_id].sum_A;
+                    self.nodes[parent_id].hmax = self.nodes[parent_id]
+                        .children
+                        .iter()
+                        .map(|&id| self.nodes[id].hmax)
+                        .max()
+                        .unwrap_or(self.nodes[parent_id].h);
+                    parent_id = self.nodes[parent_id].parent as usize;
                 }
             }
         }
@@ -369,22 +373,24 @@ impl State {
         if child.parent == parent.num as i64 {
             return false;
         }
-        // 親子逆転
-        let mut Q = VecDeque::new();
-        Q.push_back(child.num);
-        while let Some(id) = Q.pop_front() {
-            if parent.num == id {
-                return false;
-            }
-            for child_id in self.nodes[id].children.iter() {
-                Q.push_back(*child_id);
-            }
-        }
         // 高さ制約違反
         if child.hmax + (parent.h + 1) - child.h > input.H as i64 {
             return false;
         }
         true
+    }
+    pub fn is_loop(&self, child: &Node, parent: &Node) -> bool {
+        let mut Q = VecDeque::new();
+        Q.push_back(child.num);
+        while let Some(id) = Q.pop_front() {
+            if parent.num == id {
+                return true;
+            }
+            for child_id in self.nodes[id].children.iter() {
+                Q.push_back(*child_id);
+            }
+        }
+        false
     }
     pub fn calc_diff_score(&self, child: &Node, parent: &Node) -> i64 {
         let diff_h = (parent.h + 1) - child.h;
