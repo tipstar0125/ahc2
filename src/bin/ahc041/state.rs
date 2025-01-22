@@ -145,8 +145,52 @@ impl State {
                 }
             }
         }
-        eprintln!("Score = {}", score);
-        println!("{}", ans.iter().join(" "));
+
+        self.score = score;
+        for (c, p) in ans.iter().enumerate() {
+            if *p != -1 {
+                self.nodes[*p as usize].children.push(c);
+            }
+            self.nodes[c].parent = *p as i64;
+        }
+        for i in 0..input.N {
+            if self.nodes[i].is_root() {
+                let mut Q = vec![];
+                let mut leafs = vec![];
+                Q.push((i, 0));
+                while let Some((id, h)) = Q.pop() {
+                    self.nodes[id].h = h;
+                    if self.nodes[id].is_leaf() {
+                        leafs.push(id);
+                    }
+                    for child_id in self.nodes[id].children.iter() {
+                        Q.push((*child_id, h + 1));
+                    }
+                }
+
+                let mut Q = BinaryHeap::new();
+                let mut used = BTreeSet::new();
+                for id in leafs.iter() {
+                    self.nodes[*id].hmax = self.nodes[*id].h;
+                    self.nodes[*id].sum_A = input.A[*id] as i64;
+                    Q.push((self.nodes[*id].h, *id));
+                    used.insert(*id);
+                }
+                while let Some((_, id)) = Q.pop() {
+                    if !self.nodes[id].is_root() {
+                        let parent_id = self.nodes[id].parent as usize;
+                        self.nodes[parent_id].hmax =
+                            self.nodes[parent_id].hmax.max(self.nodes[id].hmax);
+                        self.nodes[parent_id].sum_A += self.nodes[id].sum_A;
+                        if used.contains(&parent_id) {
+                            continue;
+                        }
+                        used.insert(parent_id);
+                        Q.push((self.nodes[parent_id].h, parent_id));
+                    }
+                }
+            }
+        }
     }
     pub fn greedy(&mut self, input: &Input) {
         let mut used = vec![false; input.N];
