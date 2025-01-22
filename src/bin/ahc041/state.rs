@@ -340,8 +340,8 @@ impl State {
     }
     pub fn annealing(&mut self, input: &Input) {
         let tle = 1.95;
-        let T0 = 100.0;
-        let T1 = 0.1;
+        let T0 = 200.0;
+        let T1 = 0.01;
         let mut rng = Pcg64Mcg::new(100);
         let mut iter = 0;
         let mut valid_iter = 0;
