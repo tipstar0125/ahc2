@@ -38,6 +38,45 @@ impl State {
                 .collect(),
         }
     }
+    pub fn dfs(&mut self, input: &Input) {
+        let mut used = vec![false; input.N];
+        let mut ans = vec![-1; input.N];
+        let mut score = 1;
+        let mut order = input
+            .A
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(i, a)| (a, i))
+            .collect_vec();
+        order.sort();
+
+        for (_, root) in order.iter() {
+            if used[*root] {
+                continue;
+            }
+            let mut Q = vec![];
+            Q.push((*root, 0));
+            score += input.A[*root];
+            used[*root] = true;
+            while let Some((pos, h)) = Q.pop() {
+                if h == input.H {
+                    continue;
+                }
+                for nxt in input.G[pos].iter() {
+                    if used[*nxt] {
+                        continue;
+                    }
+                    Q.push((*nxt, h + 1));
+                    score += input.A[*nxt] * (h as i64 + 2);
+                    used[*nxt] = true;
+                    ans[*nxt] = pos as i32;
+                }
+            }
+        }
+        eprintln!("Score = {}", score);
+        println!("{}", ans.iter().join(" "));
+    }
     pub fn greedy(&mut self, input: &Input) {
         let mut used = vec![false; input.N];
         let mut used_cnt = 0;
