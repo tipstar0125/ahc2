@@ -9,7 +9,7 @@ pub fn read_input() -> Input {
         H: usize,
         A: [i64; N],
         UV: [(usize, usize); M],
-        XY: [(usize, usize); N],
+        _XY: [(usize, usize); N],
     }
 
     let mut G = vec![vec![]; N];
