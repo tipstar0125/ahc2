@@ -14,9 +14,17 @@ pub fn read_input() -> Input {
 
     let mut G = vec![vec![]; N];
     for (u, v) in UV {
-        G[u].push(v);
-        G[v].push(u);
+        G[u].push((A[v], v));
+        G[v].push((A[u], u));
     }
+
+    let G = G
+        .into_iter()
+        .map(|mut v| {
+            v.sort();
+            v.into_iter().map(|(_, u)| u).collect()
+        })
+        .collect();
 
     Input { N, M, H, A, G }
 }

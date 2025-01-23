@@ -49,6 +49,7 @@ impl State {
     }
     pub fn dfs(&mut self, input: &Input) {
         let mut used = vec![false; input.N];
+        let mut used_cnt = 0;
         let mut ans = vec![-1; input.N];
         let mut score = 1;
         let mut order = input
@@ -65,8 +66,17 @@ impl State {
                 continue;
             }
             used[*root] = true;
+            used_cnt += 1;
             score += input.A[*root];
-            dfs(*root, 0, &mut used, &mut score, &mut ans, input);
+            dfs(
+                *root,
+                0,
+                &mut used,
+                &mut used_cnt,
+                &mut score,
+                &mut ans,
+                input,
+            );
         }
         eprintln!("Score = {}", score);
         println!("{}", ans.iter().join(" "));
@@ -84,51 +94,34 @@ impl State {
                     continue;
                 }
                 let mut used_part = used.clone();
-                let mut used_part_cnt = 0;
-                let mut score_part = 0;
-                let mut Q = vec![];
-                Q.push((root, 0));
                 used_part[root] = true;
-                used_part_cnt += 1;
-                score_part += input.A[root];
-                while let Some((pos, h)) = Q.pop() {
-                    if h == input.H {
-                        continue;
-                    }
-                    for nxt in input.G[pos].iter() {
-                        if used_part[*nxt] {
-                            continue;
-                        }
-                        Q.push((*nxt, h + 1));
-                        used_part[*nxt] = true;
-                        used_part_cnt += 1;
-                        score_part += input.A[*nxt] * (h as i64 + 2);
-                    }
-                }
-                cands.push((score_part as f64 / used_part_cnt as f64, root));
+                let mut used_cnt_part = 1;
+                let mut score_part = input.A[root];
+                dfs(
+                    root,
+                    0,
+                    &mut used_part,
+                    &mut used_cnt_part,
+                    &mut score_part,
+                    &mut vec![-1; input.N],
+                    input,
+                );
+                cands.push((score_part as f64 / used_cnt_part as f64, root));
             }
             cands.sort_by(|a, b| b.partial_cmp(a).unwrap());
             let root = cands[0].1;
-            let mut Q = vec![];
-            Q.push((root, 0));
             used[root] = true;
             used_cnt += 1;
             score += input.A[root];
-            while let Some((pos, h)) = Q.pop() {
-                if h == input.H {
-                    continue;
-                }
-                for nxt in input.G[pos].iter() {
-                    if used[*nxt] {
-                        continue;
-                    }
-                    Q.push((*nxt, h + 1));
-                    used[*nxt] = true;
-                    used_cnt += 1;
-                    score += input.A[*nxt] * (h as i64 + 2);
-                    ans[*nxt] = pos as i32;
-                }
-            }
+            dfs(
+                root,
+                0,
+                &mut used,
+                &mut used_cnt,
+                &mut score,
+                &mut ans,
+                input,
+            );
         }
 
         self.score = score;
@@ -440,6 +433,7 @@ fn dfs(
     pos: usize,
     h: usize,
     used: &mut Vec<bool>,
+    used_cnt: &mut usize,
     score: &mut i64,
     ans: &mut Vec<i32>,
     input: &Input,
@@ -453,8 +447,9 @@ fn dfs(
             continue;
         }
         used[*nxt] = true;
+        *used_cnt += 1;
         *score += input.A[*nxt] * (h as i64 + 2);
         ans[*nxt] = pos as i32;
-        dfs(*nxt, h + 1, used, score, ans, input);
+        dfs(*nxt, h + 1, used, used_cnt, score, ans, input);
     }
 }
