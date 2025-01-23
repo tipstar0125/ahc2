@@ -317,7 +317,7 @@ impl State {
         }
     }
     pub fn annealing(&mut self, input: &Input) {
-        let tle = 1.95;
+        let tle = 1.99;
         let T0 = 200.0;
         let T1 = 0.01;
         let mut rng = Pcg64Mcg::new(100);
@@ -325,7 +325,10 @@ impl State {
         let mut valid_iter = 0;
         let mut update_iter = 0;
 
-        while get_time() < tle {
+        loop {
+            if iter % 100 == 0 && get_time() > tle {
+                break;
+            }
             let node_id = rng.gen_range(0..self.nodes.len());
             let neighbor_id = input.G[node_id][rng.gen_range(0..input.G[node_id].len())];
             iter += 1;
