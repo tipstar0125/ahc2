@@ -64,24 +64,8 @@ impl State {
             if used[*root] {
                 continue;
             }
-            let mut Q = vec![];
-            Q.push((*root, 0));
-            score += input.A[*root];
             used[*root] = true;
-            while let Some((pos, h)) = Q.pop() {
-                if h == input.H {
-                    continue;
-                }
-                for nxt in input.G[pos].iter() {
-                    if used[*nxt] {
-                        continue;
-                    }
-                    Q.push((*nxt, h + 1));
-                    score += input.A[*nxt] * (h as i64 + 2);
-                    used[*nxt] = true;
-                    ans[*nxt] = pos as i32;
-                }
-            }
+            dfs(*root, 0, &mut used, &mut score, &mut ans, input);
         }
         eprintln!("Score = {}", score);
         println!("{}", ans.iter().join(" "));
@@ -448,5 +432,28 @@ impl State {
             .map(|node| node.parent)
             .collect::<Vec<_>>();
         println!("{}", ans.iter().join(" "));
+    }
+}
+
+fn dfs(
+    pos: usize,
+    h: usize,
+    used: &mut Vec<bool>,
+    score: &mut i64,
+    ans: &mut Vec<i32>,
+    input: &Input,
+) {
+    if h == input.H {
+        return;
+    }
+
+    for nxt in input.G[pos].iter() {
+        if used[*nxt] {
+            continue;
+        }
+        used[*nxt] = true;
+        *score += input.A[*nxt] * (h as i64 + 2);
+        ans[*nxt] = pos as i32;
+        dfs(*nxt, h + 1, used, score, ans, input);
     }
 }
