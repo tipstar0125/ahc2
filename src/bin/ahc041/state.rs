@@ -65,6 +65,7 @@ impl State {
                 continue;
             }
             used[*root] = true;
+            score += input.A[*root];
             dfs(*root, 0, &mut used, &mut score, &mut ans, input);
         }
         eprintln!("Score = {}", score);
