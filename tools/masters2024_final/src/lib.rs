@@ -385,6 +385,9 @@ pub fn exec(p: &mut std::process::Child, local: bool) -> Result<i64, String> {
         if local {
             println!("#p {:.0} {:.0}", sim.p.0, sim.p.1);
             println!("#v {:.0} {:.0}", sim.v.0, sim.v.1);
+            let _ = writeln!(stdin, "{:.0} {:.0}", sim.p.0, sim.p.1);
+            let _ = writeln!(stdin, "{:.0} {:.0}", sim.v.0, sim.v.1);
+            let _ = stdin.flush();
         }
         let line = read_line(&mut stdout, local)?;
         let mut it = line.split_whitespace();

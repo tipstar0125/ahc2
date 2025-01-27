@@ -8,9 +8,9 @@ pub fn read_input() -> Input {
         M: usize,
         eps: f64,
         delta: f64,
-        _s: (i64, i64),
-        _ps: [(i64, i64); N],
-        _walls: [(i64, i64, i64, i64); M],
+        s_: (i64, i64),
+        ps_: [(i64, i64); N],
+        walls_: [(i64, i64, i64, i64); M],
     }
 
     Input {
@@ -18,11 +18,11 @@ pub fn read_input() -> Input {
         M,
         eps,
         delta,
-        s: Coord::new(_s.0, _s.1),
-        ps: _ps.iter().map(|&(x, y)| Coord::new(x, y)).collect(),
-        walls: _walls
+        s: Coord { x: s_.0, y: s_.1 },
+        ps: ps_.iter().map(|&(x, y)| Coord { x, y }).collect(),
+        walls: walls_
             .iter()
-            .map(|&(x1, y1, x2, y2)| (Coord::new(x1, y1), Coord::new(x2, y2)))
+            .map(|&(x1, y1, x2, y2)| (Coord { x: x1, y: y1 }, Coord { x: x2, y: y2 }))
             .collect(),
         width: 1e5 as i64,
         height: 1e5 as i64,
