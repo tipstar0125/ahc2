@@ -67,6 +67,7 @@ impl App for Egui {
 
             view_world(ui, &self.input, d);
             view_wall(ui, &self.input, d);
+            view_destination(ui, &self.input, d);
             let agent_coord = &self.input.s;
             view_agent(ui, &self.input, d, agent_coord);
 
@@ -267,12 +268,33 @@ pub fn view_wall(ui: &mut Ui, input: &Input, d: f32) {
         line(ui, pos1, pos2, Color32::BLACK, 2.0);
     }
 }
+pub fn view_destination(ui: &mut Ui, input: &Input, d: f32) {
+    let radius = 1000.0 * d;
+    for i in 0..input.ps.len() {
+        let pos = Pos2 {
+            x: d * (input.ps[i].x as f32 + input.width as f32),
+            y: d * (input.ps[i].y as f32 + input.height as f32),
+        };
+        let rect = circle(ui, pos, radius, Color32::GRAY, Color32::GRAY);
+        let hover_pos = ui.input().pointer.hover_pos();
+        if let Some(hover_pos) = hover_pos {
+            if rect.contains(hover_pos) {
+                show_tooltip_at_pointer(ui.ctx(), Id::new("hover tooltip"), |ui| {
+                    ui.label(format!(
+                        "id = {}, (x, y) = ({}, {})",
+                        i, input.ps[i].x, input.ps[i].y
+                    ));
+                });
+            }
+        }
+    }
+}
 pub fn view_agent(ui: &mut Ui, input: &Input, d: f32, coord: &Coord) {
     let pos = Pos2 {
         x: d * (coord.x as f32 + input.width as f32),
         y: d * (coord.y as f32 + input.height as f32),
     };
-    let rect = circle(ui, pos, 3.0, Color32::RED, Color32::RED);
+    let rect = circle(ui, pos, 2.0, Color32::RED, Color32::RED);
     let hover_pos = ui.input().pointer.hover_pos();
     if let Some(hover_pos) = hover_pos {
         if rect.contains(hover_pos) {
