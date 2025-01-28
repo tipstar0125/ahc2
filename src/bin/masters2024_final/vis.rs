@@ -1,4 +1,5 @@
 use crate::coord::Coord;
+use crate::estimator::Particle;
 use crate::{Input, Output};
 
 use eframe::egui::{
@@ -53,7 +54,7 @@ impl App for Egui {
             self.cnt += 1;
             if self.cnt % (SPEED_MIN + SPEED_MAX - self.speed) == 0
                 && self.play
-                && self.turn < self.max_turn
+                && self.turn < self.max_turn - 1
             {
                 self.turn += 1;
             }
@@ -68,8 +69,9 @@ impl App for Egui {
             view_world(ui, &self.input, d);
             view_wall(ui, &self.input, d);
             view_destination(ui, &self.input, d);
-            let agent_coord = &self.input.s;
-            view_agent(ui, &self.input, d, agent_coord);
+            view_particle(ui, &self.input, d, &self.output.particle[self.turn]);
+            let agent_coord = self.output.actual_position[self.turn];
+            view_agent(ui, &self.input, d, &agent_coord);
 
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Turn: ").size(20.0));
@@ -302,5 +304,14 @@ pub fn view_agent(ui: &mut Ui, input: &Input, d: f32, coord: &Coord) {
                 ui.label(format!("(x, y) = ({}, {})", coord.x, coord.y,));
             });
         }
+    }
+}
+pub fn view_particle(ui: &mut Ui, input: &Input, d: f32, particle: &Vec<Particle>) {
+    for p in particle {
+        let pos = Pos2 {
+            x: d * (p.coord.x as f32 + input.width as f32),
+            y: d * (-p.coord.y as f32 + input.height as f32),
+        };
+        circle(ui, pos, 1.0, Color32::BLUE, Color32::BLUE);
     }
 }
