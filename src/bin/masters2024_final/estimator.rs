@@ -45,8 +45,16 @@ impl Estimator {
             self.particles[i].velocity.y += fy;
             self.particles[i].coord.x += self.particles[i].velocity.x;
             self.particles[i].coord.y += self.particles[i].velocity.y;
-            self.particles[i].coord.x = self.particles[i].coord.x.max(-1e5 as i64 + 1).min(1e5 as i64 - 1);
-            self.particles[i].coord.y = self.particles[i].coord.y.max(-1e5 as i64 + 1).min(1e5 as i64 - 1);
+            self.particles[i].coord.x = self.particles[i]
+                .coord
+                .x
+                .max(-1e5 as i64 + 1)
+                .min(1e5 as i64 - 1);
+            self.particles[i].coord.y = self.particles[i]
+                .coord
+                .y
+                .max(-1e5 as i64 + 1)
+                .min(1e5 as i64 - 1);
         }
     }
     pub fn measure(&mut self, input: &Input, d: i64, is_x_direction: bool) {
@@ -76,17 +84,17 @@ impl Estimator {
         let step = s / self.particles.len() as f64;
         let mut r = rng.gen_range(0.0..step);
         let mut pos = 0;
-        let mut particle = vec![];
-        while particle.len() < self.particles.len() {
+        let mut particles = vec![];
+        while particles.len() < self.particles.len() {
             if r < ws[pos] {
                 self.particles[pos].weight = 1.0;
-                particle.push(self.particles[pos]);
+                particles.push(self.particles[pos]);
                 r += step;
             } else {
                 pos += 1;
             }
         }
-        self.particles = particle;
+        self.particles = particles;
         self.particles.clone()
     }
     pub fn action(&mut self, input: &Input, rng: &mut Pcg64Mcg) -> Vec<Particle> {
