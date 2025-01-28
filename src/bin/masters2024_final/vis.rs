@@ -259,11 +259,11 @@ pub fn view_wall(ui: &mut Ui, input: &Input, d: f32) {
     for w in input.walls.iter() {
         let pos1 = Pos2 {
             x: d * (w.0.x as f32 + input.width as f32),
-            y: d * (w.0.y as f32 + input.height as f32),
+            y: d * (-w.0.y as f32 + input.height as f32),
         };
         let pos2 = Pos2 {
             x: d * (w.1.x as f32 + input.width as f32),
-            y: d * (w.1.y as f32 + input.height as f32),
+            y: d * (-w.1.y as f32 + input.height as f32),
         };
         line(ui, pos1, pos2, Color32::BLACK, 2.0);
     }
@@ -273,7 +273,7 @@ pub fn view_destination(ui: &mut Ui, input: &Input, d: f32) {
     for i in 0..input.ps.len() {
         let pos = Pos2 {
             x: d * (input.ps[i].x as f32 + input.width as f32),
-            y: d * (input.ps[i].y as f32 + input.height as f32),
+            y: d * (-input.ps[i].y as f32 + input.height as f32),
         };
         let rect = circle(ui, pos, radius, Color32::GRAY, Color32::GRAY);
         let hover_pos = ui.input().pointer.hover_pos();
@@ -292,7 +292,7 @@ pub fn view_destination(ui: &mut Ui, input: &Input, d: f32) {
 pub fn view_agent(ui: &mut Ui, input: &Input, d: f32, coord: &Coord) {
     let pos = Pos2 {
         x: d * (coord.x as f32 + input.width as f32),
-        y: d * (coord.y as f32 + input.height as f32),
+        y: d * (-coord.y as f32 + input.height as f32),
     };
     let rect = circle(ui, pos, 2.0, Color32::RED, Color32::RED);
     let hover_pos = ui.input().pointer.hover_pos();
