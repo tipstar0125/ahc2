@@ -98,12 +98,7 @@ impl Estimator {
         self.particles.clone()
     }
     pub fn action(&mut self, input: &Input, rng: &mut Pcg64Mcg) -> Vec<Particle> {
-        if self.turn == 0 {
-            println!("A -500 0");
-            for i in 0..self.particles.len() {
-                self.particles[i].velocity.x += -500;
-            }
-        } else if self.turn % 3 == 0 {
+        if self.turn % 3 == 0 {
             println!("A 0 0");
         } else if self.turn % 3 == 1 {
             println!("S 1 0");
@@ -130,10 +125,11 @@ impl Estimator {
                 self.particles[i].velocity.x = 0;
                 self.particles[i].velocity.y = 0;
             }
+        } else {
+            self.move_(rng);
         }
 
         self.turn += 1;
-        self.move_(rng);
         self.resampling(rng)
     }
 }
