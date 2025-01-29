@@ -12,16 +12,20 @@ pub struct Particle {
 }
 
 pub struct Estimator {
+    pub rng: Pcg64Mcg,
     pub turn: usize,
-    pub velocity_pdf: Normal,
+    pub velocity_x_pdf: Normal,
+    pub velocity_y_pdf: Normal,
     pub particles: Vec<Particle>,
 }
 
 impl Estimator {
     pub fn new(input: &Input, particle_num: usize) -> Self {
         Self {
+            rng: Pcg64Mcg::new(100),
             turn: 0,
-            velocity_pdf: Normal::new(0.0, input.eps),
+            velocity_x_pdf: Normal::new(0.0, input.eps),
+            velocity_y_pdf: Normal::new(0.0, input.eps),
             particles: vec![
                 Particle {
                     coord: input.s,
@@ -32,15 +36,10 @@ impl Estimator {
             ],
         }
     }
-    pub fn move_(&mut self, rng: &mut Pcg64Mcg) {
+    pub fn update_motion(&mut self) {
         for i in 0..self.particles.len() {
-            let mut fx = self.velocity_pdf.sample(rng);
-            let mut fy = self.velocity_pdf.sample(rng);
-            if rng.gen_bool(0.5) {
-                std::mem::swap(&mut fx, &mut fy);
-            }
-            let fx = fx.round() as i64;
-            let fy = fy.round() as i64;
+            let fx = self.velocity_x_pdf.sample(&mut self.rng).round() as i64;
+            let fy = self.velocity_y_pdf.sample(&mut self.rng).round() as i64;
             self.particles[i].velocity.x += fx;
             self.particles[i].velocity.y += fy;
             self.particles[i].coord.x += self.particles[i].velocity.x;
@@ -57,7 +56,7 @@ impl Estimator {
                 .min(1e5 as i64 - 1);
         }
     }
-    pub fn measure(&mut self, input: &Input, d: i64, is_x_direction: bool) {
+    pub fn update_measure(&mut self, input: &Input, d: i64, is_x_direction: bool) {
         for i in 0..self.particles.len() {
             let particle_d = if is_x_direction {
                 1e5 as i64 - self.particles[i].coord.x
@@ -70,7 +69,7 @@ impl Estimator {
             self.particles[i].weight *= measure_pdf.pdf(d as f64);
         }
     }
-    pub fn resampling(&mut self, rng: &mut Pcg64Mcg) -> Vec<Particle> {
+    pub fn resampling(&mut self) -> Vec<Particle> {
         let mut ws = vec![];
         let mut s = 0.0;
         for i in 0..self.particles.len() {
@@ -82,7 +81,7 @@ impl Estimator {
             s += 1e-100;
         }
         let step = s / self.particles.len() as f64;
-        let mut r = rng.gen_range(0.0..step);
+        let mut r = self.rng.gen_range(0.0..step);
         let mut pos = 0;
         let mut particles = vec![];
         while particles.len() < self.particles.len() {
@@ -97,7 +96,7 @@ impl Estimator {
         self.particles = particles;
         self.particles.clone()
     }
-    pub fn action(&mut self, input: &Input, rng: &mut Pcg64Mcg) -> Vec<Particle> {
+    pub fn action(&mut self, input: &Input) -> Vec<Particle> {
         if self.turn % 3 == 0 {
             println!("A 0 0");
         } else if self.turn % 3 == 1 {
@@ -105,13 +104,13 @@ impl Estimator {
             input_interactive! {
                 d: i64,
             }
-            self.measure(input, d, true);
+            self.update_measure(input, d, true);
         } else {
             println!("S 0 1");
             input_interactive! {
                 d: i64,
             }
-            self.measure(input, d, false);
+            self.update_measure(input, d, false);
         }
 
         input_interactive! {
@@ -126,10 +125,10 @@ impl Estimator {
                 self.particles[i].velocity.y = 0;
             }
         } else {
-            self.move_(rng);
+            self.update_motion();
         }
 
         self.turn += 1;
-        self.resampling(rng)
+        self.resampling()
     }
 }

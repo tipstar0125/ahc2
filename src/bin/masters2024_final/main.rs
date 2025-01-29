@@ -34,12 +34,11 @@ fn solve(input: &Input) -> Output {
         // eprintln!("p = {:?}, v = {:?}", p, v);
     }
 
-    let mut rng = Pcg64Mcg::new(100);
     let mut estimator = estimator::Estimator::new(input, 2000);
     output.particle.push(estimator.particles.clone());
 
     for t in 0..input.max_turn {
-        let particles = estimator.action(input, &mut rng);
+        let particles = estimator.action(input);
         output.particle.push(particles.clone());
 
         if t < input.max_turn - 1 {
