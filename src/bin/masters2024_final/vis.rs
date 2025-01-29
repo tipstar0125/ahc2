@@ -61,6 +61,10 @@ impl App for Egui {
             self.instant = Instant::now();
         }
 
+        if self.turn > self.max_turn - 1 {
+            self.turn = self.max_turn - 1;
+        }
+
         CentralPanel::default().show(ctx, |ui| {
             let width = self.input.width;
             let height = self.input.height;
