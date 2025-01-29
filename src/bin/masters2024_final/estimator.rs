@@ -131,4 +131,11 @@ impl Estimator {
         self.turn += 1;
         self.resampling()
     }
+    pub fn get_estimated_position(&self) -> Coord {
+        let len = self.particles.len() as i64;
+        Coord {
+            x: self.particles.iter().map(|p| p.coord.x).sum::<i64>() / len,
+            y: self.particles.iter().map(|p| p.coord.y).sum::<i64>() / len,
+        }
+    }
 }

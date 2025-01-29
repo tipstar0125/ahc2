@@ -74,8 +74,20 @@ impl App for Egui {
             view_wall(ui, &self.input, d);
             view_destination(ui, &self.input, d);
             view_particle(ui, &self.input, d, &self.output.particle[self.turn]);
-            let agent_coord = self.output.actual_position[self.turn];
-            view_agent(ui, &self.input, d, &agent_coord);
+            view_agent(
+                ui,
+                &self.input,
+                d,
+                &self.output.estimated_position[self.turn],
+                Color32::GREEN,
+            );
+            view_agent(
+                ui,
+                &self.input,
+                d,
+                &self.output.actual_position[self.turn],
+                Color32::RED,
+            );
 
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Turn: ").size(20.0));
@@ -295,12 +307,12 @@ pub fn view_destination(ui: &mut Ui, input: &Input, d: f32) {
         }
     }
 }
-pub fn view_agent(ui: &mut Ui, input: &Input, d: f32, coord: &Coord) {
+pub fn view_agent(ui: &mut Ui, input: &Input, d: f32, coord: &Coord, color: Color32) {
     let pos = Pos2 {
         x: d * (coord.x as f32 + input.width as f32),
         y: d * (-coord.y as f32 + input.height as f32),
     };
-    let rect = circle(ui, pos, 2.0, Color32::RED, Color32::RED);
+    let rect = circle(ui, pos, 2.0, color, color);
     let hover_pos = ui.input().pointer.hover_pos();
     if let Some(hover_pos) = hover_pos {
         if rect.contains(hover_pos) {
@@ -316,6 +328,6 @@ pub fn view_particle(ui: &mut Ui, input: &Input, d: f32, particle: &Vec<Particle
             x: d * (p.coord.x as f32 + input.width as f32),
             y: d * (-p.coord.y as f32 + input.height as f32),
         };
-        circle(ui, pos, 1.0, Color32::BLUE, Color32::BLUE);
+        circle(ui, pos, 2.0, Color32::BLUE, Color32::BLUE);
     }
 }

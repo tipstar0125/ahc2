@@ -5,7 +5,6 @@ use coord::Coord;
 use estimator::Particle;
 use input::Input;
 use proconio::input_interactive;
-use rand_pcg::Pcg64Mcg;
 
 use crate::{common::get_time, input::read_input};
 
@@ -21,6 +20,7 @@ fn solve(input: &Input) -> Output {
         actual_position: vec![],
         actual_velocity: vec![],
         particle: vec![],
+        estimated_position: vec![],
     };
 
     #[cfg(feature = "local")]
@@ -36,10 +36,16 @@ fn solve(input: &Input) -> Output {
 
     let mut estimator = estimator::Estimator::new(input, 2000);
     output.particle.push(estimator.particles.clone());
+    output
+        .estimated_position
+        .push(estimator.get_estimated_position());
 
     for t in 0..input.max_turn {
         let particles = estimator.action(input);
         output.particle.push(particles.clone());
+        output
+            .estimated_position
+            .push(estimator.get_estimated_position());
 
         if t < input.max_turn - 1 {
             #[cfg(feature = "local")]
@@ -76,4 +82,5 @@ pub struct Output {
     actual_position: Vec<Coord>,
     actual_velocity: Vec<Coord>,
     particle: Vec<Vec<Particle>>,
+    estimated_position: Vec<Coord>,
 }
