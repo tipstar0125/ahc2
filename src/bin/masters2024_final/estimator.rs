@@ -24,8 +24,8 @@ impl Estimator {
         Self {
             rng: Pcg64Mcg::new(100),
             turn: 0,
-            velocity_x_pdf: Normal::new(0.0, input.eps),
-            velocity_y_pdf: Normal::new(0.0, input.eps),
+            velocity_x_pdf: Normal::new(0.0, input.eps * 2.0),
+            velocity_y_pdf: Normal::new(0.0, input.eps * 2.0),
             particles: vec![
                 Particle {
                     coord: input.s,
@@ -56,13 +56,23 @@ impl Estimator {
                 .min(1e5 as i64 - 1);
         }
     }
-    pub fn update_measure(&mut self, input: &Input, d: i64, is_x_direction: bool) {
+    pub fn update_measure(
+        &mut self,
+        input: &Input,
+        d: i64,
+        is_x_direction: bool,
+        is_direction_plus: bool,
+    ) {
         for i in 0..self.particles.len() {
-            let particle_d = if is_x_direction {
+            let mut particle_d = if is_x_direction {
                 1e5 as i64 - self.particles[i].coord.x
             } else {
                 1e5 as i64 - self.particles[i].coord.y
             };
+
+            if !is_direction_plus {
+                particle_d = 2e5 as i64 - particle_d;
+            }
 
             let std = particle_d as f64 * input.delta;
             let measure_pdf = Normal::new(particle_d as f64, std);
@@ -100,17 +110,19 @@ impl Estimator {
         if self.turn % 3 == 0 {
             println!("A 0 0");
         } else if self.turn % 3 == 1 {
-            println!("S 1 0");
+            let is_direction_plus = self.get_estimated_position().x >= 0;
+            println!("S {} 0", if is_direction_plus { 1 } else { -1 });
             input_interactive! {
                 d: i64,
             }
-            self.update_measure(input, d, true);
+            self.update_measure(input, d, true, is_direction_plus);
         } else {
-            println!("S 0 1");
+            let is_direction_plus = self.get_estimated_position().y >= 0;
+            println!("S 0 {}", if is_direction_plus { 1 } else { -1 });
             input_interactive! {
                 d: i64,
             }
-            self.update_measure(input, d, false);
+            self.update_measure(input, d, false, is_direction_plus);
         }
 
         input_interactive! {
