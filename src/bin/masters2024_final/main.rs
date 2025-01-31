@@ -13,6 +13,7 @@ mod coord;
 mod estimator;
 mod input;
 mod normal;
+mod pid;
 mod vis;
 
 fn solve(input: &Input) -> Output {
