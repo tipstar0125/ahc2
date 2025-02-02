@@ -94,15 +94,13 @@ fn solve(input: &Input) {
                 C[idx][input.N - 1] = '.';
             }
 
-            if !validate(&C) {
-                for _ in 0..num {
-                    ans.push(format!("R {}", idx));
-                    score -= 1;
-                    for j in (1..input.N).rev() {
-                        C[idx][j] = C[idx][j - 1];
-                    }
-                    C[idx][0] = '.';
+            while !validate(&C) {
+                ans.push(format!("R {}", idx));
+                score -= 1;
+                for j in (1..input.N).rev() {
+                    C[idx][j] = C[idx][j - 1];
                 }
+                C[idx][0] = '.';
             }
         } else if dir == 'R' {
             for _ in 0..num {
@@ -114,15 +112,13 @@ fn solve(input: &Input) {
                 C[idx][0] = '.';
             }
 
-            if !validate(&C) {
-                for _ in 0..num {
-                    ans.push(format!("L {}", idx));
-                    score -= 1;
-                    for j in 1..input.N {
-                        C[idx][j - 1] = C[idx][j];
-                    }
-                    C[idx][input.N - 1] = '.';
+            while !validate(&C) {
+                ans.push(format!("L {}", idx));
+                score -= 1;
+                for j in 1..input.N {
+                    C[idx][j - 1] = C[idx][j];
                 }
+                C[idx][input.N - 1] = '.';
             }
         } else if dir == 'U' {
             for _ in 0..num {
@@ -134,15 +130,13 @@ fn solve(input: &Input) {
                 C[input.N - 1][idx] = '.';
             }
 
-            if !validate(&C) {
-                for _ in 0..num {
-                    ans.push(format!("D {}", idx));
-                    score -= 1;
-                    for i in (1..input.N).rev() {
-                        C[i][idx] = C[i - 1][idx];
-                    }
-                    C[0][idx] = '.';
+            while !validate(&C) {
+                ans.push(format!("D {}", idx));
+                score -= 1;
+                for i in (1..input.N).rev() {
+                    C[i][idx] = C[i - 1][idx];
                 }
+                C[0][idx] = '.';
             }
         } else if dir == 'D' {
             for _ in 0..num {
@@ -154,15 +148,13 @@ fn solve(input: &Input) {
                 C[0][idx] = '.';
             }
 
-            if !validate(&C) {
-                for _ in 0..num {
-                    ans.push(format!("U {}", idx));
-                    score -= 1;
-                    for i in 1..input.N {
-                        C[i - 1][idx] = C[i][idx];
-                    }
-                    C[input.N - 1][idx] = '.';
+            while !validate(&C) {
+                ans.push(format!("U {}", idx));
+                score -= 1;
+                for i in 1..input.N {
+                    C[i - 1][idx] = C[i][idx];
                 }
+                C[input.N - 1][idx] = '.';
             }
         }
     }
