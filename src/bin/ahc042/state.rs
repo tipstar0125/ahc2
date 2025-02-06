@@ -5,6 +5,7 @@ use crate::input::Input;
 pub struct State {
     N: usize,
     field: Vec<Vec<char>>,
+    shift_cnt: usize,
 }
 
 impl State {
@@ -12,7 +13,11 @@ impl State {
         Self {
             N: input.N,
             field: input.C.clone(),
+            shift_cnt: 0,
         }
+    }
+    pub fn get_score(&self) -> usize {
+        8 * self.N * self.N - self.shift_cnt
     }
     pub fn shift_left(&mut self, row: usize, shift_num: usize) -> Vec<String> {
         let mut ret = vec![];
@@ -157,6 +162,7 @@ impl State {
                 'D' => ans.extend(self.shift_up(idx, shift_num)),
                 _ => unreachable!(),
             }
+            self.shift_cnt += shift_num * 2;
         }
 
         for a in ans {
@@ -310,6 +316,7 @@ impl State {
                 'D' => ans.extend(self.shift_down(idx, 1)),
                 _ => unreachable!(),
             };
+            self.shift_cnt += 1;
         }
 
         for a in ans {
