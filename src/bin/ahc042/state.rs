@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use crate::input::Input;
 
 pub struct State {
@@ -155,6 +157,159 @@ impl State {
                 'D' => ans.extend(self.shift_up(idx, shift_num)),
                 _ => unreachable!(),
             }
+        }
+
+        for a in ans {
+            println!("{}", a);
+        }
+    }
+    pub fn get_min_dist(&self, row: usize, col: usize) -> usize {
+        let mut dist = 1 << 60;
+
+        // left
+        let mut d = 1;
+        for j in 0..col {
+            d += 1;
+            if self.field[row][j] == 'o' {
+                d += 1;
+            }
+        }
+        dist = dist.min(d);
+
+        // right
+        let mut d = 1;
+        for j in (col + 1)..self.N {
+            d += 1;
+            if self.field[row][j] == 'o' {
+                d += 1;
+            }
+        }
+        dist = dist.min(d);
+
+        // up
+        let mut d = 1;
+        for i in 0..row {
+            d += 1;
+            if self.field[i][col] == 'o' {
+                d += 1;
+            }
+        }
+        dist = dist.min(d);
+
+        // down
+        let mut d = 1;
+        for i in (row + 1)..self.N {
+            d += 1;
+            if self.field[i][col] == 'o' {
+                d += 1;
+            }
+        }
+        dist = dist.min(d);
+        dist
+    }
+    pub fn get_field_min_dist(&self) -> usize {
+        let mut dist = 0;
+        for i in 0..self.N {
+            for j in 0..self.N {
+                if self.field[i][j] == 'x' {
+                    dist += self.get_min_dist(i, j);
+                }
+            }
+        }
+        dist
+    }
+    pub fn can_shift(&self, dir: char, idx: usize) -> bool {
+        match dir {
+            'L' => self.field[idx][0] != 'o',
+            'R' => self.field[idx][self.N - 1] != 'o',
+            'U' => self.field[0][idx] != 'o',
+            'D' => self.field[self.N - 1][idx] != 'o',
+            _ => unreachable!(),
+        }
+    }
+    pub fn greedy_dist(&mut self) {
+        let mut cnt = 2 * self.N;
+        for i in 0..self.N {
+            for j in 0..self.N {
+                if self.field[i][j] == 'x' {
+                    cnt -= 1;
+                }
+            }
+        }
+
+        let mut ans = vec![];
+
+        while cnt < self.N * 2 {
+            let mut candidates = vec![];
+
+            for i in 0..self.N {
+                let mut x_cnt = 0;
+                for j in 0..self.N {
+                    if self.field[i][j] == 'x' {
+                        x_cnt += 1;
+                    }
+                }
+                if self.can_shift('L', i) {
+                    let remove_x = self.field[i][0] == 'x';
+                    self.shift_left(i, 1);
+                    let s = self.get_field_min_dist();
+                    candidates.push((s, Reverse(x_cnt), 'L', i, remove_x));
+                    self.shift_right(i, 1);
+                    if remove_x {
+                        self.field[i][0] = 'x';
+                    }
+                }
+                if self.can_shift('R', i) {
+                    let remove_x = self.field[i][self.N - 1] == 'x';
+                    self.shift_right(i, 1);
+                    let s = self.get_field_min_dist();
+                    candidates.push((s, Reverse(x_cnt), 'R', i, remove_x));
+                    self.shift_left(i, 1);
+                    if remove_x {
+                        self.field[i][self.N - 1] = 'x';
+                    }
+                }
+            }
+            for j in 0..self.N {
+                let mut x_cnt = 0;
+                for i in 0..self.N {
+                    if self.field[i][j] == 'x' {
+                        x_cnt += 1;
+                    }
+                }
+                if self.can_shift('U', j) {
+                    let remove_x = self.field[0][j] == 'x';
+                    self.shift_up(j, 1);
+                    let s = self.get_field_min_dist();
+                    candidates.push((s, Reverse(x_cnt), 'U', j, remove_x));
+                    self.shift_down(j, 1);
+                    if remove_x {
+                        self.field[0][j] = 'x';
+                    }
+                }
+                if self.can_shift('D', j) {
+                    let remove_x = self.field[self.N - 1][j] == 'x';
+                    self.shift_down(j, 1);
+                    let s = self.get_field_min_dist();
+                    candidates.push((s, Reverse(x_cnt), 'D', j, remove_x));
+                    self.shift_up(j, 1);
+                    if remove_x {
+                        self.field[self.N - 1][j] = 'x';
+                    }
+                }
+            }
+            candidates.sort();
+            let (_, _, dir, idx, remove_x) = candidates[0];
+            if remove_x {
+                cnt += 1;
+            }
+            match dir {
+                'L' => ans.extend(self.shift_left(idx, 1)),
+                'R' => ans.extend(self.shift_right(idx, 1)),
+                'U' => ans.extend(self.shift_up(idx, 1)),
+                'D' => ans.extend(self.shift_down(idx, 1)),
+                _ => unreachable!(),
+            };
         }
 
         for a in ans {
