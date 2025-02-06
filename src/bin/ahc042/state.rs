@@ -144,6 +144,9 @@ impl State {
                 }
             }
 
+            if candidates.is_empty() {
+                break;
+            }
             candidates.sort_by(|a, b| b.partial_cmp(a).unwrap());
             let (_, shift_num, x_cnt, dir, idx) = candidates[0];
             cnt += x_cnt;
@@ -155,14 +158,7 @@ impl State {
                 'D' => ans.extend(self.shift_down(idx, shift_num)),
                 _ => unreachable!(),
             }
-            match dir {
-                'L' => ans.extend(self.shift_right(idx, shift_num)),
-                'R' => ans.extend(self.shift_left(idx, shift_num)),
-                'U' => ans.extend(self.shift_down(idx, shift_num)),
-                'D' => ans.extend(self.shift_up(idx, shift_num)),
-                _ => unreachable!(),
-            }
-            self.shift_cnt += shift_num * 2;
+            self.shift_cnt += shift_num;
         }
 
         for a in ans {
