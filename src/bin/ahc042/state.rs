@@ -63,87 +63,66 @@ impl State {
         }
         ret
     }
+    pub fn get_greedy_legal_action(&self) -> Vec<(f64, usize, usize, char, usize)> {
+        let mut candidates = vec![];
+        for i in 0..self.N {
+            let mut x_cnt = 0;
+            for j in 0..self.N {
+                if self.field[i][j] == 'o' {
+                    break;
+                }
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                    let shift_num = j + 1;
+                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'L', i));
+                }
+            }
+
+            let mut x_cnt = 0;
+            for j in (0..self.N).rev() {
+                if self.field[i][j] == 'o' {
+                    break;
+                }
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                    let shift_num = self.N - j;
+                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'R', i));
+                }
+            }
+        }
+        for j in 0..self.N {
+            let mut x_cnt = 0;
+            for i in 0..self.N {
+                if self.field[i][j] == 'o' {
+                    break;
+                }
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                    let shift_num = i + 1;
+                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'U', j));
+                }
+            }
+
+            let mut x_cnt = 0;
+            for i in (0..self.N).rev() {
+                if self.field[i][j] == 'o' {
+                    break;
+                }
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                    let shift_num = self.N - i;
+                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'D', j));
+                }
+            }
+        }
+        candidates
+    }
     pub fn greedy(&mut self) {
         let mut cnt = 0;
         let mut ans = vec![];
 
         while cnt < self.N * 2 {
-            let mut candidates = vec![];
-            for i in 0..self.N {
-                let mut x_cnt = 0;
-                for j in 0..self.N {
-                    if self.field[i][j] == 'o' {
-                        break;
-                    }
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                        let shift_num = j + 1;
-                        candidates.push((
-                            x_cnt as f64 / shift_num as f64,
-                            shift_num,
-                            x_cnt,
-                            'L',
-                            i,
-                        ));
-                    }
-                }
-
-                let mut x_cnt = 0;
-                for j in (0..self.N).rev() {
-                    if self.field[i][j] == 'o' {
-                        break;
-                    }
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                        let shift_num = self.N - j;
-                        candidates.push((
-                            x_cnt as f64 / shift_num as f64,
-                            shift_num,
-                            x_cnt,
-                            'R',
-                            i,
-                        ));
-                    }
-                }
-            }
-            for j in 0..self.N {
-                let mut x_cnt = 0;
-                for i in 0..self.N {
-                    if self.field[i][j] == 'o' {
-                        break;
-                    }
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                        let shift_num = i + 1;
-                        candidates.push((
-                            x_cnt as f64 / shift_num as f64,
-                            shift_num,
-                            x_cnt,
-                            'U',
-                            j,
-                        ));
-                    }
-                }
-
-                let mut x_cnt = 0;
-                for i in (0..self.N).rev() {
-                    if self.field[i][j] == 'o' {
-                        break;
-                    }
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                        let shift_num = self.N - i;
-                        candidates.push((
-                            x_cnt as f64 / shift_num as f64,
-                            shift_num,
-                            x_cnt,
-                            'D',
-                            j,
-                        ));
-                    }
-                }
-            }
-
+            let mut candidates = self.get_greedy_legal_action();
             if candidates.is_empty() {
                 break;
             }
@@ -229,6 +208,69 @@ impl State {
             _ => unreachable!(),
         }
     }
+    pub fn get_greedy_dist_legal_action(
+        &mut self,
+    ) -> Vec<(usize, Reverse<usize>, char, usize, bool)> {
+        let mut candidates = vec![];
+
+        for i in 0..self.N {
+            let mut x_cnt = 0;
+            for j in 0..self.N {
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                }
+            }
+            if self.can_shift('L', i) {
+                let remove_x = self.field[i][0] == 'x';
+                self.shift_left(i, 1);
+                let s = self.get_field_min_dist();
+                candidates.push((s, Reverse(x_cnt), 'L', i, remove_x));
+                self.shift_right(i, 1);
+                if remove_x {
+                    self.field[i][0] = 'x';
+                }
+            }
+            if self.can_shift('R', i) {
+                let remove_x = self.field[i][self.N - 1] == 'x';
+                self.shift_right(i, 1);
+                let s = self.get_field_min_dist();
+                candidates.push((s, Reverse(x_cnt), 'R', i, remove_x));
+                self.shift_left(i, 1);
+                if remove_x {
+                    self.field[i][self.N - 1] = 'x';
+                }
+            }
+        }
+        for j in 0..self.N {
+            let mut x_cnt = 0;
+            for i in 0..self.N {
+                if self.field[i][j] == 'x' {
+                    x_cnt += 1;
+                }
+            }
+            if self.can_shift('U', j) {
+                let remove_x = self.field[0][j] == 'x';
+                self.shift_up(j, 1);
+                let s = self.get_field_min_dist();
+                candidates.push((s, Reverse(x_cnt), 'U', j, remove_x));
+                self.shift_down(j, 1);
+                if remove_x {
+                    self.field[0][j] = 'x';
+                }
+            }
+            if self.can_shift('D', j) {
+                let remove_x = self.field[self.N - 1][j] == 'x';
+                self.shift_down(j, 1);
+                let s = self.get_field_min_dist();
+                candidates.push((s, Reverse(x_cnt), 'D', j, remove_x));
+                self.shift_up(j, 1);
+                if remove_x {
+                    self.field[self.N - 1][j] = 'x';
+                }
+            }
+        }
+        candidates
+    }
     pub fn greedy_dist(&mut self) {
         let mut cnt = 2 * self.N;
         for i in 0..self.N {
@@ -242,64 +284,7 @@ impl State {
         let mut ans = vec![];
 
         while cnt < self.N * 2 {
-            let mut candidates = vec![];
-
-            for i in 0..self.N {
-                let mut x_cnt = 0;
-                for j in 0..self.N {
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                    }
-                }
-                if self.can_shift('L', i) {
-                    let remove_x = self.field[i][0] == 'x';
-                    self.shift_left(i, 1);
-                    let s = self.get_field_min_dist();
-                    candidates.push((s, Reverse(x_cnt), 'L', i, remove_x));
-                    self.shift_right(i, 1);
-                    if remove_x {
-                        self.field[i][0] = 'x';
-                    }
-                }
-                if self.can_shift('R', i) {
-                    let remove_x = self.field[i][self.N - 1] == 'x';
-                    self.shift_right(i, 1);
-                    let s = self.get_field_min_dist();
-                    candidates.push((s, Reverse(x_cnt), 'R', i, remove_x));
-                    self.shift_left(i, 1);
-                    if remove_x {
-                        self.field[i][self.N - 1] = 'x';
-                    }
-                }
-            }
-            for j in 0..self.N {
-                let mut x_cnt = 0;
-                for i in 0..self.N {
-                    if self.field[i][j] == 'x' {
-                        x_cnt += 1;
-                    }
-                }
-                if self.can_shift('U', j) {
-                    let remove_x = self.field[0][j] == 'x';
-                    self.shift_up(j, 1);
-                    let s = self.get_field_min_dist();
-                    candidates.push((s, Reverse(x_cnt), 'U', j, remove_x));
-                    self.shift_down(j, 1);
-                    if remove_x {
-                        self.field[0][j] = 'x';
-                    }
-                }
-                if self.can_shift('D', j) {
-                    let remove_x = self.field[self.N - 1][j] == 'x';
-                    self.shift_down(j, 1);
-                    let s = self.get_field_min_dist();
-                    candidates.push((s, Reverse(x_cnt), 'D', j, remove_x));
-                    self.shift_up(j, 1);
-                    if remove_x {
-                        self.field[self.N - 1][j] = 'x';
-                    }
-                }
-            }
+            let mut candidates = self.get_greedy_dist_legal_action();
             candidates.sort();
             let (_, _, dir, idx, remove_x) = candidates[0];
             if remove_x {
