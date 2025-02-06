@@ -63,69 +63,77 @@ impl State {
         while cnt < self.N * 2 {
             let mut candidates = vec![];
             for i in 0..self.N {
-                let mut x_pos_right_idx = !0;
                 let mut x_cnt = 0;
                 for j in 0..self.N {
                     if self.field[i][j] == 'o' {
                         break;
                     }
                     if self.field[i][j] == 'x' {
-                        x_pos_right_idx = j;
                         x_cnt += 1;
+                        let shift_num = j + 1;
+                        candidates.push((
+                            x_cnt as f64 / shift_num as f64,
+                            shift_num,
+                            x_cnt,
+                            'L',
+                            i,
+                        ));
                     }
                 }
-                if x_pos_right_idx != !0 {
-                    let shift_num = x_pos_right_idx + 1;
-                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'L', i));
-                }
 
-                let mut x_pos_left_idx = !0;
                 let mut x_cnt = 0;
                 for j in (0..self.N).rev() {
                     if self.field[i][j] == 'o' {
                         break;
                     }
                     if self.field[i][j] == 'x' {
-                        x_pos_left_idx = j;
                         x_cnt += 1;
+                        let shift_num = self.N - j;
+                        candidates.push((
+                            x_cnt as f64 / shift_num as f64,
+                            shift_num,
+                            x_cnt,
+                            'R',
+                            i,
+                        ));
                     }
-                }
-                if x_pos_left_idx != !0 {
-                    let shift_num = self.N - x_pos_left_idx;
-                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'R', i));
                 }
             }
             for j in 0..self.N {
-                let mut x_pos_down_idx = !0;
                 let mut x_cnt = 0;
                 for i in 0..self.N {
                     if self.field[i][j] == 'o' {
                         break;
                     }
                     if self.field[i][j] == 'x' {
-                        x_pos_down_idx = i;
                         x_cnt += 1;
+                        let shift_num = i + 1;
+                        candidates.push((
+                            x_cnt as f64 / shift_num as f64,
+                            shift_num,
+                            x_cnt,
+                            'U',
+                            j,
+                        ));
                     }
                 }
-                if x_pos_down_idx != !0 {
-                    let shift_num = x_pos_down_idx + 1;
-                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'U', j));
-                }
 
-                let mut x_pos_up_idx = !0;
                 let mut x_cnt = 0;
                 for i in (0..self.N).rev() {
                     if self.field[i][j] == 'o' {
                         break;
                     }
                     if self.field[i][j] == 'x' {
-                        x_pos_up_idx = i;
                         x_cnt += 1;
+                        let shift_num = self.N - i;
+                        candidates.push((
+                            x_cnt as f64 / shift_num as f64,
+                            shift_num,
+                            x_cnt,
+                            'D',
+                            j,
+                        ));
                     }
-                }
-                if x_pos_up_idx != !0 {
-                    let shift_num = self.N - x_pos_up_idx;
-                    candidates.push((x_cnt as f64 / shift_num as f64, shift_num, x_cnt, 'D', j));
                 }
             }
 
