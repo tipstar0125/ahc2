@@ -2,10 +2,11 @@ use std::cmp::Reverse;
 
 use crate::input::Input;
 
+#[derive(Clone)]
 pub struct State {
-    N: usize,
-    field: Vec<Vec<char>>,
-    shift_cnt: usize,
+    pub N: usize,
+    pub field: Vec<Vec<char>>,
+    pub shift_cnt: usize,
 }
 
 impl State {
@@ -144,7 +145,16 @@ impl State {
             println!("{}", a);
         }
 
-        self.greedy_dist();
+        let mut cnt = 2 * self.N;
+        for i in 0..self.N {
+            for j in 0..self.N {
+                if self.field[i][j] == 'x' {
+                    cnt -= 1;
+                }
+            }
+        }
+
+        self.greedy_dist(true, 0, cnt);
     }
     pub fn get_min_dist(&self, row: usize, col: usize) -> usize {
         let mut dist = 1 << 60;
@@ -273,19 +283,13 @@ impl State {
         }
         candidates
     }
-    pub fn greedy_dist(&mut self) {
-        let mut cnt = 2 * self.N;
-        for i in 0..self.N {
-            for j in 0..self.N {
-                if self.field[i][j] == 'x' {
-                    cnt -= 1;
-                }
-            }
-        }
-
+    pub fn greedy_dist(&mut self, verbose: bool, prune_score: usize, mut cnt: usize) -> bool {
         let mut ans = vec![];
 
         while cnt < self.N * 2 {
+            if prune_score > self.get_score() {
+                return false;
+            }
             let mut candidates = self.get_greedy_dist_legal_action();
             candidates.sort();
             let (_, _, dir, idx, remove_x) = candidates[0];
@@ -302,8 +306,11 @@ impl State {
             self.shift_cnt += 1;
         }
 
-        for a in ans {
-            println!("{}", a);
+        if verbose {
+            for a in ans {
+                println!("{}", a);
+            }
         }
+        true
     }
 }
