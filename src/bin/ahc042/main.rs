@@ -13,6 +13,7 @@ mod test;
 fn solve(input: &Input) {
     let mut state = state::State::new(input);
     state.greedy();
+    eprintln!("Score = {}", state.get_score());
 }
 
 fn main() {

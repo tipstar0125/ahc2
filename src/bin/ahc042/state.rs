@@ -143,6 +143,8 @@ impl State {
         for a in ans {
             println!("{}", a);
         }
+
+        self.greedy_dist();
     }
     pub fn get_min_dist(&self, row: usize, col: usize) -> usize {
         let mut dist = 1 << 60;
