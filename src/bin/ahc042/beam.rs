@@ -7,6 +7,12 @@ use crate::{
     state::{Op, State},
 };
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ScoreOrder {
+    Ascending,  // Lower is better
+    Descending, // Higher is better
+}
+
 #[derive(Debug, Clone)]
 pub struct Node {
     pub track_id: usize,
@@ -28,12 +34,12 @@ impl Node {
 struct Cand {
     op: Op,
     parent: usize,
-    eval_score: usize,
+    eval_score: i64,
     hash: usize,
     is_done: bool,
 }
 impl Cand {
-    fn raw_score(&self, _input: &Input) -> usize {
+    fn raw_score(&self, _input: &Input) -> i64 {
         self.eval_score
     }
 }
@@ -53,14 +59,15 @@ impl BeamSearch {
         }
     }
 
-    fn append_cands(&self, input: &Input, cands: &mut Vec<Cand>, _rng: &mut rand_pcg::Pcg64Mcg) {
+    #[allow(unused_variables)]
+    fn append_cands(&self, input: &Input, cands: &mut Vec<Cand>, rng: &mut rand_pcg::Pcg64Mcg) {
         for parent_idx in 0..self.nodes.len() {
             let parent_node = &self.nodes[parent_idx];
-            for (delta_score, hash, op, is_done) in parent_node.state.cand(input) {
+            for (score, hash, op, is_done) in parent_node.state.cand(input) {
                 let cand = Cand {
                     op,
                     parent: parent_idx,
-                    eval_score: parent_node.state.score + delta_score,
+                    eval_score: score,
                     hash,
                     is_done,
                 };
@@ -97,14 +104,14 @@ impl BeamSearch {
         width: usize,
         depth: usize,
         input: &Input,
-        _rng: &mut rand_pcg::Pcg64Mcg,
-        is_ascending: bool,
+        score_order: ScoreOrder,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
         let mut set = FxHashSet::default();
+        let mut rng = rand_pcg::Pcg64Mcg::new(0);
         for t in 0..depth {
             if t != 0 {
-                if is_ascending {
+                if score_order == ScoreOrder::Ascending {
                     cands.sort_unstable_by_key(|a| a.eval_score);
                 } else {
                     cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
@@ -124,10 +131,10 @@ impl BeamSearch {
                 );
             }
             cands.clear();
-            self.append_cands(input, &mut cands, _rng);
+            self.append_cands(input, &mut cands, &mut rng);
         }
 
-        let best = if is_ascending {
+        let best = if score_order == ScoreOrder::Ascending {
             cands.iter().min_by_key(|a| a.raw_score(input)).unwrap()
         } else {
             cands.iter().max_by_key(|a| a.raw_score(input)).unwrap()

@@ -15,7 +15,6 @@ mod state;
 mod test;
 
 fn solve(input: &Input) {
-    let mut rng = Pcg64Mcg::new(0);
     let init_state = state::State::new(input);
     let init_node = Node {
         track_id: !0,
@@ -23,8 +22,8 @@ fn solve(input: &Input) {
     };
 
     let mut beam = beam::BeamSearch::new(init_node);
-    let width = 200;
-    let ops = beam.solve(width, 200, &input, &mut rng, true);
+    let width = 300;
+    let ops = beam.solve(width, 200, &input, beam::ScoreOrder::Ascending);
     for op in ops.iter() {
         println!("{} {}", op.dir, op.idx);
     }

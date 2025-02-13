@@ -13,7 +13,7 @@ pub struct State {
     pub N: usize,
     pub field: Vec<Vec<char>>,
     pub shift_cnt: usize,
-    pub score: usize,
+    pub score: i64,
 }
 
 impl State {
@@ -164,7 +164,7 @@ impl State {
 
         self.greedy_dist(true, 0, cnt);
     }
-    pub fn get_min_dist(&self, row: usize, col: usize) -> usize {
+    pub fn get_min_dist(&self, row: usize, col: usize) -> i64 {
         let mut dist = 1 << 60;
 
         // left
@@ -208,7 +208,7 @@ impl State {
         dist = dist.min(d);
         dist
     }
-    pub fn get_field_min_dist(&self) -> usize {
+    pub fn get_field_min_dist(&self) -> i64 {
         let mut dist = 0;
         for i in 0..self.N {
             for j in 0..self.N {
@@ -230,7 +230,7 @@ impl State {
     }
     pub fn get_greedy_dist_legal_action(
         &mut self,
-    ) -> Vec<(usize, Reverse<usize>, char, usize, bool)> {
+    ) -> Vec<(i64, Reverse<usize>, char, usize, bool)> {
         let mut candidates = vec![];
 
         for i in 0..self.N {
@@ -321,7 +321,7 @@ impl State {
         }
         true
     }
-    pub fn cand(&self, input: &Input) -> Vec<(usize, usize, Op, bool)> {
+    pub fn cand(&self, input: &Input) -> Vec<(i64, usize, Op, bool)> {
         let mut cand = vec![];
         let mut field = self.field.clone();
 
@@ -379,7 +379,7 @@ impl State {
         }
         cand
     }
-    pub fn apply(&mut self, score: usize, _hash: usize, op: &Op, _input: &Input) {
+    pub fn apply(&mut self, score: i64, _hash: usize, op: &Op, _input: &Input) {
         if op.dir == 'L' {
             self.shift_left(op.idx, 1);
         } else if op.dir == 'R' {
