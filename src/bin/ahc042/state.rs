@@ -2,11 +2,18 @@ use std::cmp::Reverse;
 
 use crate::input::Input;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
+pub struct Op {
+    pub dir: char,
+    pub idx: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct State {
     pub N: usize,
     pub field: Vec<Vec<char>>,
     pub shift_cnt: usize,
+    pub score: usize,
 }
 
 impl State {
@@ -15,6 +22,7 @@ impl State {
             N: input.N,
             field: input.C.clone(),
             shift_cnt: 0,
+            score: 0,
         }
     }
     pub fn get_score(&self) -> usize {
@@ -312,5 +320,113 @@ impl State {
             }
         }
         true
+    }
+    pub fn cand(&self, input: &Input) -> Vec<(usize, usize, Op, bool)> {
+        let mut cand = vec![];
+        let mut field = self.field.clone();
+
+        for i in 0..self.N {
+            if self.can_shift('L', i) {
+                let remove_x = self.field[i][0] == 'x';
+                shift_left(&mut field, i, 1);
+                let s = self.get_field_min_dist();
+                let h = input.calc_hash.calc(&field);
+                let op = Op { dir: 'L', idx: i };
+                cand.push((s, h, op, s == 0));
+                shift_right(&mut field, i, 1);
+                if remove_x {
+                    field[i][0] = 'x';
+                }
+            }
+            if self.can_shift('R', i) {
+                let remove_x = self.field[i][self.N - 1] == 'x';
+                shift_right(&mut field, i, 1);
+                let s = self.get_field_min_dist();
+                let h = input.calc_hash.calc(&field);
+                let op = Op { dir: 'R', idx: i };
+                cand.push((s, h, op, s == 0));
+                shift_left(&mut field, i, 1);
+                if remove_x {
+                    field[i][self.N - 1] = 'x';
+                }
+            }
+        }
+        for j in 0..self.N {
+            if self.can_shift('U', j) {
+                let remove_x = self.field[0][j] == 'x';
+                shift_up(&mut field, j, 1);
+                let s = self.get_field_min_dist();
+                let h = input.calc_hash.calc(&field);
+                let op = Op { dir: 'U', idx: j };
+                cand.push((s, h, op, s == 0));
+                shift_down(&mut field, j, 1);
+                if remove_x {
+                    field[0][j] = 'x';
+                }
+            }
+            if self.can_shift('D', j) {
+                let remove_x = self.field[self.N - 1][j] == 'x';
+                shift_down(&mut field, j, 1);
+                let s = self.get_field_min_dist();
+                let h = input.calc_hash.calc(&field);
+                let op = Op { dir: 'D', idx: j };
+                cand.push((s, h, op, s == 0));
+                shift_up(&mut field, j, 1);
+                if remove_x {
+                    field[self.N - 1][j] = 'x';
+                }
+            }
+        }
+        cand
+    }
+    pub fn apply(&mut self, score: usize, _hash: usize, op: &Op, _input: &Input) {
+        if op.dir == 'L' {
+            self.shift_left(op.idx, 1);
+        } else if op.dir == 'R' {
+            self.shift_right(op.idx, 1);
+        } else if op.dir == 'U' {
+            self.shift_up(op.idx, 1);
+        } else {
+            self.shift_down(op.idx, 1);
+        }
+        self.shift_cnt += 1;
+        self.score = score;
+    }
+}
+
+pub fn shift_left(field: &mut Vec<Vec<char>>, row: usize, shift_num: usize) {
+    let N = field.len();
+    for _ in 0..shift_num {
+        for j in 1..N {
+            field[row][j - 1] = field[row][j];
+        }
+        field[row][N - 1] = '.';
+    }
+}
+pub fn shift_right(field: &mut Vec<Vec<char>>, row: usize, shift_num: usize) {
+    let N = field.len();
+    for _ in 0..shift_num {
+        for j in (1..N).rev() {
+            field[row][j] = field[row][j - 1];
+        }
+        field[row][0] = '.';
+    }
+}
+pub fn shift_up(field: &mut Vec<Vec<char>>, col: usize, shift_num: usize) {
+    let N = field.len();
+    for _ in 0..shift_num {
+        for i in 1..N {
+            field[i - 1][col] = field[i][col];
+        }
+        field[N - 1][col] = '.';
+    }
+}
+pub fn shift_down(field: &mut Vec<Vec<char>>, col: usize, shift_num: usize) {
+    let N = field.len();
+    for _ in 0..shift_num {
+        for i in (1..N).rev() {
+            field[i][col] = field[i - 1][col];
+        }
+        field[0][col] = '.';
     }
 }

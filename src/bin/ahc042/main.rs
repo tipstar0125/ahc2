@@ -1,17 +1,33 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use beam::Node;
 use input::Input;
+use rand_pcg::Pcg64Mcg;
 
 use crate::{common::get_time, input::read_input};
 
+mod beam;
 mod common;
+mod hash;
 mod input;
 mod state;
 mod test;
 
 fn solve(input: &Input) {
-    playout(input);
+    let mut rng = Pcg64Mcg::new(0);
+    let init_state = state::State::new(input);
+    let init_node = Node {
+        track_id: !0,
+        state: init_state,
+    };
+
+    let mut beam = beam::BeamSearch::new(init_node);
+    let width = 200;
+    let ops = beam.solve(width, 200, &input, &mut rng, true);
+    for op in ops.iter() {
+        println!("{} {}", op.dir, op.idx);
+    }
 }
 
 fn main() {
