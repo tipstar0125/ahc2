@@ -1,4 +1,3 @@
-use proconio::input_interactive;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
@@ -117,36 +116,6 @@ impl Estimator {
         Coord {
             x: self.particles.iter().map(|p| p.coord.x).sum::<i64>() / len,
             y: self.particles.iter().map(|p| p.coord.y).sum::<i64>() / len,
-        }
-    }
-}
-
-// a^2+b^2<=c^2になるようにa,bをスケーリング
-fn scale_to_fit(a: i64, b: i64, c: i64) -> (i64, i64) {
-    if a * a + b * b <= c * c {
-        return (a, b);
-    }
-
-    let sq = ((a * a + b * b) as f64).sqrt();
-    let sa = (a as f64 * c as f64 / sq) as i64;
-    let sb = (b as f64 * c as f64 / sq) as i64;
-
-    (sa, sb)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_scale_to_fit() {
-        let mut rng = Pcg64Mcg::new(100);
-        for _ in 0..1e7 as usize {
-            let a = rng.gen_range(-10000..=10000);
-            let b = rng.gen_range(-10000..=10000);
-            let c = 500;
-            let (sa, sb) = scale_to_fit(a, b, c);
-            assert!(sa * sa + sb * sb <= c * c);
         }
     }
 }
