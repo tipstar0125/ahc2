@@ -31,15 +31,26 @@ impl CalcHash {
 
         Self { hash_map }
     }
-    pub fn calc(&self, field: &Vec<Vec<char>>) -> usize {
-        let mut ret = 0;
-        for i in 0..field.len() {
-            for j in 0..field[i].len() {
-                if field[i][j] == 'x' {
-                    ret ^= self.hash_map[i][j];
-                }
+    pub fn calc(&self, mut hash: usize, row: usize, col: usize, dir: char) -> usize {
+        let N = self.hash_map.len();
+        hash ^= self.hash_map[row][col];
+        if dir == 'L' {
+            if col > 0 {
+                hash ^= self.hash_map[row][col - 1];
+            }
+        } else if dir == 'R' {
+            if col + 1 < N {
+                hash ^= self.hash_map[row][col + 1];
+            }
+        } else if dir == 'U' {
+            if row > 0 {
+                hash ^= self.hash_map[row - 1][col];
+            }
+        } else if dir == 'D' {
+            if row + 1 < N {
+                hash ^= self.hash_map[row + 1][col];
             }
         }
-        ret
+        hash
     }
 }
