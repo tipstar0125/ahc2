@@ -72,7 +72,12 @@ impl App for Egui {
 
             view_world(ui, &self.input, d);
             view_wall(ui, &self.input, d);
-            view_destination(ui, &self.input, d);
+            view_destination(
+                ui,
+                &self.input,
+                &self.output.reached_destination[self.turn],
+                d,
+            );
             view_particle(ui, &self.input, d, &self.output.particle[self.turn]);
             view_agent(
                 ui,
@@ -286,14 +291,18 @@ pub fn view_wall(ui: &mut Ui, input: &Input, d: f32) {
         line(ui, pos1, pos2, Color32::BLACK, 2.0);
     }
 }
-pub fn view_destination(ui: &mut Ui, input: &Input, d: f32) {
+pub fn view_destination(ui: &mut Ui, input: &Input, reached_destination: &Vec<bool>, d: f32) {
     let radius = 1000.0 * d;
     for i in 0..input.ps.len() {
         let pos = Pos2 {
             x: d * (input.ps[i].x as f32 + input.width as f32),
             y: d * (-input.ps[i].y as f32 + input.height as f32),
         };
-        let rect = circle(ui, pos, radius, Color32::GRAY, Color32::GRAY);
+        let rect = if reached_destination[i] {
+            circle(ui, pos, radius, Color32::GOLD, Color32::GOLD)
+        } else {
+            circle(ui, pos, radius, Color32::GRAY, Color32::GRAY)
+        };
         let hover_pos = ui.input().pointer.hover_pos();
         if let Some(hover_pos) = hover_pos {
             if rect.contains(hover_pos) {

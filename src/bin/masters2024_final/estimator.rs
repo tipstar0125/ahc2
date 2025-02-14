@@ -106,42 +106,11 @@ impl Estimator {
         self.particles = particles;
         self.particles.clone()
     }
-    pub fn action(&mut self, input: &Input) -> Vec<Particle> {
-        if self.turn % 3 == 0 {
-            println!("A 0 0");
-        } else if self.turn % 3 == 1 {
-            let is_direction_plus = self.get_estimated_position().x >= 0;
-            println!("S {} 0", if is_direction_plus { 1 } else { -1 });
-            input_interactive! {
-                d: i64,
-            }
-            self.update_measure(input, d, true, is_direction_plus);
-        } else {
-            let is_direction_plus = self.get_estimated_position().y >= 0;
-            println!("S 0 {}", if is_direction_plus { 1 } else { -1 });
-            input_interactive! {
-                d: i64,
-            }
-            self.update_measure(input, d, false, is_direction_plus);
+    pub fn stop(&mut self) {
+        for i in 0..self.particles.len() {
+            self.particles[i].velocity.x = 0;
+            self.particles[i].velocity.y = 0;
         }
-
-        input_interactive! {
-            c: usize,
-            h: usize,
-            _q: [usize; h]
-        }
-
-        if c == 1 {
-            for i in 0..self.particles.len() {
-                self.particles[i].velocity.x = 0;
-                self.particles[i].velocity.y = 0;
-            }
-        } else {
-            self.update_motion();
-        }
-
-        self.turn += 1;
-        self.resampling()
     }
     pub fn get_estimated_position(&self) -> Coord {
         let len = self.particles.len() as i64;

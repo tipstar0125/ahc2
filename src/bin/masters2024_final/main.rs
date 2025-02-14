@@ -14,6 +14,7 @@ mod estimator;
 mod input;
 mod normal;
 mod pid;
+mod state;
 mod vis;
 
 fn solve(input: &Input) -> Output {
@@ -22,6 +23,7 @@ fn solve(input: &Input) -> Output {
         actual_velocity: vec![],
         particle: vec![],
         estimated_position: vec![],
+        reached_destination: vec![],
     };
 
     #[cfg(feature = "local")]
@@ -35,18 +37,18 @@ fn solve(input: &Input) -> Output {
         // eprintln!("p = {:?}, v = {:?}", p, v);
     }
 
-    let mut estimator = estimator::Estimator::new(input, 2000);
-    output.particle.push(estimator.particles.clone());
-    output
-        .estimated_position
-        .push(estimator.get_estimated_position());
+    let estimator = estimator::Estimator::new(input, 2000);
+    let mut state = state::State::new(input, estimator);
+    output.particle.push(state.get_particles());
+    output.estimated_position.push(state.get_coord());
 
     for t in 0..input.max_turn {
-        let particles = estimator.action(input);
-        output.particle.push(particles.clone());
+        state.action(input);
+        output.particle.push(state.get_particles());
+        output.estimated_position.push(state.get_coord());
         output
-            .estimated_position
-            .push(estimator.get_estimated_position());
+            .reached_destination
+            .push(state.get_reached_destination());
 
         if t < input.max_turn - 1 {
             #[cfg(feature = "local")]
@@ -84,4 +86,5 @@ pub struct Output {
     actual_velocity: Vec<Coord>,
     particle: Vec<Vec<Particle>>,
     estimated_position: Vec<Coord>,
+    reached_destination: Vec<Vec<bool>>,
 }
