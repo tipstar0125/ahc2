@@ -14,13 +14,13 @@ mod state;
 mod test;
 
 fn solve(input: &Input) {
-    for i in 0..input.N {
-        for j in 0..input.N {
-            let start_station = coord::Coord::new(i, j);
-            let mut state = state::State::new(input);
-            let score = state.greedy(start_station, input);
-        }
-    }
+    // for i in 0..input.N {
+    //     for j in 0..input.N {
+    let start_station = coord::Coord::new(3, 9);
+    let mut state = state::State::new(input);
+    let score = state.greedy(start_station, input);
+    //     }
+    // }
 }
 
 fn main() {

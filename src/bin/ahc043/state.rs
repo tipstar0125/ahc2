@@ -1,6 +1,8 @@
+use std::collections::BTreeSet;
+
 use crate::{
     bfs,
-    coord::{Coord, ADJ},
+    coord::{calc_manhattan_dist, Coord, ADJ},
     dsu::UnionFind,
     input::Input,
 };
@@ -28,7 +30,11 @@ pub enum Entity {
 #[derive(Debug, Clone)]
 pub struct State {
     turn: usize,
+    N: usize,
+    M: usize,
+    T: usize,
     money: i64,
+    money_per_day: i64,
     uf: UnionFind,
     root: usize,
     station_postion: Vec<Coord>,
@@ -40,7 +46,11 @@ impl State {
     pub fn new(input: &Input) -> Self {
         Self {
             turn: 0,
+            N: input.N,
+            M: input.M,
+            T: input.T,
             money: input.K as i64,
+            money_per_day: 0,
             uf: UnionFind::new(input.M * 2),
             root: !0,
             station_postion: vec![],
@@ -48,14 +58,22 @@ impl State {
             actions: vec![],
         }
     }
-    pub fn make_station(&mut self, pos: Coord, input: &Input) -> bool {
+    pub fn get_new_nodes(&mut self, pos: Coord, input: &Input) -> Vec<usize> {
         let mut home_workspace = vec![];
         for &dij in ADJ.iter() {
             let next = pos + dij;
-            if next.in_map(input.N) {
-                home_workspace.extend(input.home_workspace_field[next.i][next.j].clone());
+            if next.in_map(self.N) {
+                for &idx in input.home_workspace_field[next.i][next.j].iter() {
+                    if self.root == !0 || !self.uf.is_same(self.root, idx) {
+                        home_workspace.push(idx);
+                    }
+                }
             }
         }
+        home_workspace
+    }
+    pub fn make_station(&mut self, pos: Coord, input: &Input) -> bool {
+        let home_workspace = self.get_new_nodes(pos, input);
         // 周辺に自宅や職場がない場合は駅を置いても意味がない
         if home_workspace.is_empty() {
             return false;
@@ -95,7 +113,7 @@ impl State {
         matches!(self.field[pos.i][pos.j], Entity::Empty)
     }
     pub fn is_done(&self) -> bool {
-        self.turn == 800
+        self.turn >= self.T
     }
     pub fn greedy(&mut self, start_station: Coord, input: &Input) -> i64 {
         // 周辺に自宅や職場がない場合はスキップ
@@ -107,11 +125,11 @@ impl State {
         // 駅を設置した場合に最終的に得られる資金を計算する
 
         let mut bfs_cnt = 0;
-        let mut visited = vec![vec![0; input.N]; input.N];
+        let mut visited = vec![vec![0; self.N]; self.N];
 
         // 既に駅や線路がある場所は訪れないようにする
-        for i in 0..input.N {
-            for j in 0..input.N {
+        for i in 0..self.N {
+            for j in 0..self.N {
                 if !self.is_empty(Coord::new(i, j)) {
                     visited[i][j] = !0;
                 }
@@ -119,18 +137,68 @@ impl State {
         }
 
         while !self.is_done() {
-            // let mut cand = vec![];
-            for &station in self.station_postion.iter() {
+            let mut cand = vec![];
+            let station_position = self.station_postion.clone();
+            for &station in station_position.iter() {
                 let mut bfs = bfs::BfsGenerator::new(station, &mut bfs_cnt, &mut visited);
                 while let Some((next, dist)) = bfs.next(bfs_cnt, &mut visited) {
                     // スタート駅はスキップ
                     if dist == 0 {
                         continue;
                     }
+                    // 設置期間が最大ターン数を超える場合は設置しない
+                    if self.turn + dist > self.T {
+                        break;
+                    }
+                    let period = dist as i64; // 線路と駅の設置にかかる期間
+                    let cost = (period - 1) * RAIL_COST + STATION_COST;
+                    // 資金が足りない場合は設置しない
+                    if cost > self.money {
+                        break;
+                    }
+                    let new_nodes = self.get_new_nodes(next, input);
+                    let added_money_per_day = self.calc_added_money_per_day(&new_nodes, input);
+                    let money = self.calc_future_money(added_money_per_day, cost, period);
+                    assert!(money >= 0);
+                    cand.push((money, new_nodes.len(), next));
                 }
             }
+            cand.sort();
+            cand.reverse();
+            eprintln!("best: {:?}", cand[0]);
+
+            break;
         }
 
         self.money
+    }
+    pub fn calc_added_money_per_day(&mut self, new_nodes: &Vec<usize>, input: &Input) -> i64 {
+        let mut ret = 0;
+        for &new in new_nodes.iter() {
+            let pair_node = if new < self.M {
+                new + self.M
+            } else {
+                new - self.M
+            };
+            if self.uf.is_same(self.root, pair_node) {
+                let new_coord = if new < self.M {
+                    input.home[new]
+                } else {
+                    input.workspace[new - self.M]
+                };
+                let pair_coord = if pair_node < self.M {
+                    input.home[pair_node]
+                } else {
+                    input.workspace[pair_node - self.M]
+                };
+                ret += calc_manhattan_dist(new_coord, pair_coord) as i64;
+            }
+        }
+        ret
+    }
+    pub fn calc_future_money(&self, added_money_per_day: i64, cost: i64, period: i64) -> i64 {
+        self.money - cost
+            + (self.T as i64 - self.turn as i64) * self.money_per_day
+            + (self.T as i64 - self.turn as i64 - period) * added_money_per_day
     }
 }
