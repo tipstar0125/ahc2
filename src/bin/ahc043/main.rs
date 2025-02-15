@@ -21,6 +21,7 @@ fn solve(input: &Input) {
     let score = state.greedy(start_station, input);
     //     }
     // }
+    state.output();
 }
 
 fn main() {

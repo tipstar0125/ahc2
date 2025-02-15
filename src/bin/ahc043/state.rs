@@ -201,4 +201,14 @@ impl State {
             + (self.T as i64 - self.turn as i64) * self.money_per_day
             + (self.T as i64 - self.turn as i64 - period) * added_money_per_day
     }
+    pub fn output(&self) {
+        eprintln!("Score = {}", self.money);
+        let mut actions = self.actions.clone();
+        while actions.len() < self.T {
+            actions.push("-1".to_string());
+        }
+        for action in actions.iter() {
+            println!("{}", action);
+        }
+    }
 }
