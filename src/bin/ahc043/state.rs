@@ -154,6 +154,10 @@ impl State {
                         break;
                     }
                     let new_nodes = self.get_new_nodes(next, input);
+                    // 新規の自宅や職場がない場合はスキップ
+                    if new_nodes.is_empty() {
+                        continue;
+                    }
                     let added_money_per_day = self.calc_added_money_per_day(&new_nodes, input);
                     let money = self.calc_future_money(added_money_per_day, cost, period);
                     // 資金が増える場合のみ候補に追加
