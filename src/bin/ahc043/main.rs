@@ -5,6 +5,7 @@ use input::Input;
 
 use crate::{common::get_time, input::read_input};
 
+mod bfs;
 mod common;
 mod coord;
 mod dsu;
