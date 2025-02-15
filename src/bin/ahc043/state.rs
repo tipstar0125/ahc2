@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::cmp::Reverse;
 
 use crate::{
     bfs,
@@ -160,12 +160,19 @@ impl State {
                     let added_money_per_day = self.calc_added_money_per_day(&new_nodes, input);
                     let money = self.calc_future_money(added_money_per_day, cost, period);
                     assert!(money >= 0);
-                    cand.push((money, new_nodes.len(), next));
+                    if money > self.money {
+                        cand.push((money, new_nodes.len(), Reverse(period), next));
+                    }
                 }
+            }
+            // 資金がない、もしくは設置期間が足りない、資金が増えない場合は待機
+            if cand.is_empty() {
+                self.wait();
+                continue;
             }
             cand.sort();
             cand.reverse();
-            eprintln!("best: {:?}", cand[0]);
+            eprintln!("best: {:?}", cand);
 
             break;
         }
