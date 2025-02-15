@@ -72,10 +72,10 @@ impl State {
         }
         home_workspace
     }
-    pub fn make_station(&mut self, pos: Coord, input: &Input) -> bool {
+    pub fn make_station(&mut self, pos: Coord, node_num: usize, input: &Input) -> bool {
         let home_workspace = self.get_new_nodes(pos, input);
-        // 周辺に自宅や職場がない場合は駅を置いても意味がない
-        if home_workspace.is_empty() {
+        // 周辺に自宅や職場が少なく、計算量の都合でスキップしたい場合
+        if home_workspace.len() < node_num {
             return false;
         }
 
@@ -116,8 +116,8 @@ impl State {
         self.turn >= self.T
     }
     pub fn greedy(&mut self, start_station: Coord, input: &Input) -> i64 {
-        // 周辺に自宅や職場がない場合はスキップ
-        if !self.make_station(start_station, input) {
+        // 計算量の都合で、周辺に自宅や職場が少ない場合はスキップ
+        if !self.make_station(start_station, 2, input) {
             return 0;
         }
 
