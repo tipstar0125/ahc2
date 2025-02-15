@@ -25,10 +25,15 @@ impl BfsGenerator {
             for &dij in DIJ4.iter() {
                 let next = coord + dij;
                 if next.in_map(N) 
-                    // 通れない箇所
+                    // 通れる箇所
                     && visited[next.i][next.j] != !0 
-                    // 既に訪れた箇所
+                    // まだ訪れていない箇所
                     && visited[next.i][next.j] != bfs_cnt
+                    // 端でない箇所
+                    && next.i != 0
+                    && next.i != N - 1
+                    && next.j != 0
+                    && next.j != N - 1
                 {
                     self.queue.push_back((next, dist + 1));
                     visited[next.i][next.j] = bfs_cnt;
