@@ -121,9 +121,6 @@ impl State {
             return 0;
         }
 
-        // 現在ある駅からBFSをして、資金がつきない箇所に駅を設置することを考える
-        // 駅を設置した場合に最終的に得られる資金を計算する
-
         let mut bfs_cnt = 0;
         let mut visited = vec![vec![0; self.N]; self.N];
 
