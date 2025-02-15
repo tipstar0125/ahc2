@@ -13,10 +13,13 @@ pub fn read_input() -> Input {
 
     let mut home = vec![];
     let mut workspace = vec![];
+    let mut home_workspace_field = vec![vec![vec![]; N]; N];
 
-    for (ih, jh, iw, jw) in pos {
+    for (idx, &(ih, jh, iw, jw)) in pos.iter().enumerate() {
         home.push(Coord::new(ih, jh));
         workspace.push(Coord::new(iw, jw));
+        home_workspace_field[ih][jh].push(idx);
+        home_workspace_field[iw][jw].push(idx + M);
     }
 
     Input {
@@ -26,6 +29,7 @@ pub fn read_input() -> Input {
         T,
         home,
         workspace,
+        home_workspace_field,
     }
 }
 
@@ -37,4 +41,5 @@ pub struct Input {
     pub T: usize,
     pub home: Vec<Coord>,
     pub workspace: Vec<Coord>,
+    pub home_workspace_field: Vec<Vec<Vec<usize>>>,
 }

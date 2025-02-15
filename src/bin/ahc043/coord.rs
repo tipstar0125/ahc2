@@ -5,12 +5,26 @@ pub const DIJ4: [Coord; 4] = [
     Coord { i: !0, j: 0 }, // Up
 ];
 
-pub const DIJ5: [Coord; 5] = [
-    Coord { i: 0, j: 1 },  // Right
-    Coord { i: 1, j: 0 },  // Down
-    Coord { i: 0, j: !0 }, // Left
-    Coord { i: !0, j: 0 }, // Up
-    Coord { i: 0, j: 0 },  // Stop
+pub const ADJ: [Coord; 13] = [
+    Coord { i: 0, j: 0 },
+    Coord { i: 1, j: 0 },
+    Coord { i: 2, j: 0 },
+    Coord { i: !0, j: 0 },
+    Coord {
+        i: usize::MAX - 1,
+        j: 0,
+    },
+    Coord { i: 0, j: 1 },
+    Coord { i: 0, j: 2 },
+    Coord { i: 0, j: !0 },
+    Coord {
+        i: 0,
+        j: usize::MAX - 1,
+    },
+    Coord { i: 1, j: 1 },
+    Coord { i: 1, j: !0 },
+    Coord { i: !0, j: 1 },
+    Coord { i: !0, j: !0 },
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
