@@ -156,7 +156,7 @@ impl State {
                     let new_nodes = self.get_new_nodes(next, input);
                     let added_money_per_day = self.calc_added_money_per_day(&new_nodes, input);
                     let money = self.calc_future_money(added_money_per_day, cost, period);
-                    assert!(money >= 0);
+                    // 資金が増える場合のみ候補に追加
                     if money > self.money {
                         cand.push((money, new_nodes.len(), Reverse(period), next));
                     }
