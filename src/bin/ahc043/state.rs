@@ -1,8 +1,8 @@
 use std::cmp::Reverse;
 
 use crate::{
-    bfs,
-    coord::{calc_manhattan_dist, Coord, ADJ},
+    bfs::{bfs_revert, A_star, BfsGenerator, CANNOT_VISIT, NOT_VISITED},
+    coord::{calc_manhattan_dist, Coord, ADJ, NEG},
     dsu::UnionFind,
     input::Input,
 };
@@ -34,7 +34,8 @@ pub struct State {
     M: usize,
     T: usize,
     money: i64,
-    money_per_day: i64,
+    best_money: i64,
+    income: i64,
     uf: UnionFind,
     root: usize,
     station_postion: Vec<Coord>,
@@ -50,7 +51,8 @@ impl State {
             M: input.M,
             T: input.T,
             money: input.K as i64,
-            money_per_day: 0,
+            best_money: input.K as i64,
+            income: 0,
             uf: UnionFind::new(input.M * 2),
             root: !0,
             station_postion: vec![],
@@ -92,22 +94,81 @@ impl State {
         }
 
         self.money -= STATION_COST;
+        assert!(self.money >= 0);
+        self.money += self.income;
         self.field[pos.i][pos.j] = Entity::Station;
         self.station_postion.push(pos);
         self.actions.push(format!("0 {} {}", pos.i, pos.j));
         self.turn += 1;
+        // eprintln!(
+        //     "{} Score = {}, income = {}",
+        //     self.turn, self.money, self.income
+        // );
         true
     }
     pub fn make_rail(&mut self, pos: Coord, t: RailType) {
         self.money -= RAIL_COST;
+        assert!(self.money >= 0);
+        self.money += self.income;
         self.field[pos.i][pos.j] = Entity::Rail(t);
         self.actions
             .push(format!("{} {} {}", t as i64, pos.i, pos.j,));
         self.turn += 1;
+        // eprintln!(
+        //     "{} Score = {}, income = {}",
+        //     self.turn, self.money, self.income
+        // );
     }
     pub fn wait(&mut self) {
         self.actions.push("-1".to_string());
+        self.money += self.income;
         self.turn += 1;
+        // eprintln!(
+        //     "{} Score = {}, income = {}",
+        //     self.turn, self.money, self.income
+        // );
+    }
+    pub fn make_path(&mut self, start: Coord, goal: Coord, input: &Input) {
+        let new_nodes = self.get_new_nodes(goal, input);
+        let mut dist = vec![vec![NOT_VISITED; self.N]; self.N];
+        for i in 0..self.N {
+            for j in 0..self.N {
+                if !self.is_empty(Coord::new(i, j)) {
+                    dist[i][j] = CANNOT_VISIT;
+                }
+            }
+        }
+        A_star(start, goal, &mut dist);
+        let route = bfs_revert(start, goal, &dist);
+
+        for i in 1..route.len() - 1 {
+            let prev = route[i - 1];
+            let next = route[i + 1];
+            let now = route[i];
+            let prev_dij = now - prev;
+            let next_dij = next - now;
+
+            let t = match (prev_dij, next_dij) {
+                (Coord { i: 1, j: 0 }, Coord { i: 1, j: 0 }) => RailType::UpToDown,
+                (Coord { i: NEG, j: 0 }, Coord { i: NEG, j: 0 }) => RailType::UpToDown,
+                (Coord { i: 0, j: 1 }, Coord { i: 0, j: 1 }) => RailType::LeftToRight,
+                (Coord { i: 0, j: NEG }, Coord { i: 0, j: NEG }) => RailType::LeftToRight,
+                (Coord { i: 1, j: 0 }, Coord { i: 0, j: 1 }) => RailType::UpToRight,
+                (Coord { i: 1, j: 0 }, Coord { i: 0, j: NEG }) => RailType::LeftToUp,
+                (Coord { i: NEG, j: 0 }, Coord { i: 0, j: 1 }) => RailType::DownToRight,
+                (Coord { i: NEG, j: 0 }, Coord { i: 0, j: NEG }) => RailType::LeftToDown,
+                (Coord { i: 0, j: 1 }, Coord { i: 1, j: 0 }) => RailType::LeftToDown,
+                (Coord { i: 0, j: 1 }, Coord { i: NEG, j: 0 }) => RailType::LeftToUp,
+                (Coord { i: 0, j: NEG }, Coord { i: 1, j: 0 }) => RailType::DownToRight,
+                (Coord { i: 0, j: NEG }, Coord { i: NEG, j: 0 }) => RailType::UpToRight,
+                _ => unreachable!(),
+            };
+            self.make_rail(now, t);
+        }
+        let added_income = self.calc_added_income(&new_nodes, input);
+        self.income += added_income;
+        self.make_station(*route.last().unwrap(), 1, input);
+        self.best_money = (self.T as i64 - self.turn as i64) * self.income + self.money;
     }
     pub fn is_empty(&self, pos: Coord) -> bool {
         matches!(self.field[pos.i][pos.j], Entity::Empty)
@@ -124,20 +185,19 @@ impl State {
         let mut bfs_cnt = 0;
         let mut visited = vec![vec![0; self.N]; self.N];
 
-        // 既に駅や線路がある場所は訪れないようにする
-        for i in 0..self.N {
-            for j in 0..self.N {
-                if !self.is_empty(Coord::new(i, j)) {
-                    visited[i][j] = !0;
-                }
-            }
-        }
-
         while !self.is_done() {
             let mut cand = vec![];
             let station_position = self.station_postion.clone();
+            // 既に駅や線路がある場所は訪れないようにする
+            for i in 0..self.N {
+                for j in 0..self.N {
+                    if !self.is_empty(Coord::new(i, j)) {
+                        visited[i][j] = CANNOT_VISIT;
+                    }
+                }
+            }
             for &station in station_position.iter() {
-                let mut bfs = bfs::BfsGenerator::new(station, &mut bfs_cnt, &mut visited);
+                let mut bfs = BfsGenerator::new(station, &mut bfs_cnt, &mut visited);
                 while let Some((next, dist)) = bfs.next(bfs_cnt, &mut visited) {
                     // スタート駅はスキップ
                     if dist == 0 {
@@ -158,11 +218,11 @@ impl State {
                     if new_nodes.is_empty() {
                         continue;
                     }
-                    let added_money_per_day = self.calc_added_money_per_day(&new_nodes, input);
-                    let money = self.calc_future_money(added_money_per_day, cost, period);
+                    let added_income = self.calc_added_income(&new_nodes, input);
+                    let money = self.calc_future_money(added_income, cost, period);
                     // 資金が増える場合のみ候補に追加
-                    if money > self.money {
-                        cand.push((money, new_nodes.len(), Reverse(period), next));
+                    if money > self.best_money {
+                        cand.push((money, new_nodes.len(), Reverse(period), station, next));
                     }
                 }
             }
@@ -173,14 +233,18 @@ impl State {
             }
             cand.sort();
             cand.reverse();
-            eprintln!("best: {:?}", cand);
+            let (_, _, _, station, next) = cand[0];
+            self.make_path(station, next, input);
 
-            break;
+            // 駅が設置できるる資金になるまで待機
+            while !self.is_done() && self.money < STATION_COST + RAIL_COST * 20 {
+                self.wait();
+            }
         }
 
         self.money
     }
-    pub fn calc_added_money_per_day(&mut self, new_nodes: &Vec<usize>, input: &Input) -> i64 {
+    pub fn calc_added_income(&mut self, new_nodes: &Vec<usize>, input: &Input) -> i64 {
         let mut ret = 0;
         for &new in new_nodes.iter() {
             let pair_node = if new < self.M {
@@ -204,18 +268,17 @@ impl State {
         }
         ret
     }
-    pub fn calc_future_money(&self, added_money_per_day: i64, cost: i64, period: i64) -> i64 {
+    pub fn calc_future_money(&self, added_income: i64, cost: i64, period: i64) -> i64 {
         self.money - cost
-            + (self.T as i64 - self.turn as i64) * self.money_per_day
-            + (self.T as i64 - self.turn as i64 - period) * added_money_per_day
+            + (self.T as i64 - self.turn as i64) * self.income
+            + (self.T as i64 - self.turn as i64 - period + 1) * added_income
     }
-    pub fn output(&self) {
-        eprintln!("Score = {}", self.money);
-        let mut actions = self.actions.clone();
-        while actions.len() < self.T {
-            actions.push("-1".to_string());
+    pub fn output(&mut self) {
+        while self.actions.len() < self.T {
+            self.wait();
         }
-        for action in actions.iter() {
+        eprintln!("Score = {}", self.money);
+        for action in self.actions.iter() {
             println!("{}", action);
         }
     }

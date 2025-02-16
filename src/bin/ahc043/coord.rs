@@ -1,30 +1,26 @@
+pub const NEG: usize = usize::MAX;
+
 pub const DIJ4: [Coord; 4] = [
-    Coord { i: 0, j: 1 },  // Right
-    Coord { i: 1, j: 0 },  // Down
-    Coord { i: 0, j: !0 }, // Left
-    Coord { i: !0, j: 0 }, // Up
+    Coord { i: 0, j: 1 },   // Right
+    Coord { i: 1, j: 0 },   // Down
+    Coord { i: 0, j: NEG }, // Left
+    Coord { i: NEG, j: 0 }, // Up
 ];
 
 pub const ADJ: [Coord; 13] = [
     Coord { i: 0, j: 0 },
     Coord { i: 1, j: 0 },
     Coord { i: 2, j: 0 },
-    Coord { i: !0, j: 0 },
-    Coord {
-        i: usize::MAX - 1,
-        j: 0,
-    },
+    Coord { i: NEG, j: 0 },
+    Coord { i: NEG - 1, j: 0 },
     Coord { i: 0, j: 1 },
     Coord { i: 0, j: 2 },
-    Coord { i: 0, j: !0 },
-    Coord {
-        i: 0,
-        j: usize::MAX - 1,
-    },
+    Coord { i: 0, j: NEG },
+    Coord { i: 0, j: NEG - 1 },
     Coord { i: 1, j: 1 },
-    Coord { i: 1, j: !0 },
-    Coord { i: !0, j: 1 },
-    Coord { i: !0, j: !0 },
+    Coord { i: 1, j: NEG },
+    Coord { i: NEG, j: 1 },
+    Coord { i: NEG, j: NEG },
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -55,6 +51,16 @@ impl std::ops::Add<Coord> for Coord {
         Coord {
             i: self.i.wrapping_add(rhs.i),
             j: self.j.wrapping_add(rhs.j),
+        }
+    }
+}
+
+impl std::ops::Sub<Coord> for Coord {
+    type Output = Coord;
+    fn sub(self, rhs: Coord) -> Self::Output {
+        Coord {
+            i: self.i.wrapping_sub(rhs.i),
+            j: self.j.wrapping_sub(rhs.j),
         }
     }
 }

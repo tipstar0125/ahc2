@@ -75,7 +75,7 @@ mod tests {
         let test_number = format!("{:04}", test_number);
 
         // TLE設定
-        const TLE: f64 = 2.0;
+        const TLE: f64 = 3.0;
 
         // --binで指定するディレクトリを取得
         let exe_file_path = env::args().collect::<Vec<String>>()[0].clone();
@@ -197,7 +197,7 @@ mod tests {
         }
         let total = format!(
             "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
-            score_sum * 3 / 2,
+            score_sum / 2,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,
