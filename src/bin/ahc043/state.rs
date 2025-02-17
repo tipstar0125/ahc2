@@ -38,7 +38,8 @@ pub struct State {
     income: i64,
     uf: UnionFind,
     root: usize,
-    station_postion: Vec<Coord>,
+    station_position: Vec<Coord>,
+    rail_position: Vec<Coord>,
     field: Vec<Vec<Entity>>,
     actions: Vec<String>,
 }
@@ -55,7 +56,8 @@ impl State {
             income: 0,
             uf: UnionFind::new(input.M * 2),
             root: !0,
-            station_postion: vec![],
+            station_position: vec![],
+            rail_position: vec![],
             field: vec![vec![Entity::Empty; input.N]; input.N],
             actions: vec![],
         }
@@ -97,7 +99,7 @@ impl State {
         assert!(self.money >= 0);
         self.money += self.income;
         self.field[pos.i][pos.j] = Entity::Station;
-        self.station_postion.push(pos);
+        self.station_position.push(pos);
         self.actions.push(format!("0 {} {}", pos.i, pos.j));
         self.turn += 1;
         // eprintln!(
@@ -111,6 +113,7 @@ impl State {
         assert!(self.money >= 0);
         self.money += self.income;
         self.field[pos.i][pos.j] = Entity::Rail(t);
+        self.rail_position.push(pos);
         self.actions
             .push(format!("{} {} {}", t as i64, pos.i, pos.j,));
         self.turn += 1;
@@ -187,14 +190,14 @@ impl State {
 
         while !self.is_done() {
             let mut cand = vec![];
-            let station_position = self.station_postion.clone();
+            let station_position = self.station_position.clone();
             // 既に駅や線路がある場所は訪れないようにする
-            for i in 0..self.N {
-                for j in 0..self.N {
-                    if !self.is_empty(Coord::new(i, j)) {
-                        visited[i][j] = CANNOT_VISIT;
-                    }
-                }
+            for pos in self
+                .station_position
+                .iter()
+                .chain(self.rail_position.iter())
+            {
+                visited[pos.i][pos.j] = CANNOT_VISIT;
             }
             for &station in station_position.iter() {
                 let mut bfs = BfsGenerator::new(station, &mut bfs_cnt, &mut visited);
@@ -202,6 +205,9 @@ impl State {
                     // スタート駅はスキップ
                     if dist == 0 {
                         continue;
+                    }
+                    if dist > 50 {
+                        break;
                     }
                     // 設置期間が最大ターン数を超える場合は設置しない
                     if self.turn + dist > self.T {
@@ -222,19 +228,69 @@ impl State {
                     let money = self.calc_future_money(added_income, cost, period);
                     // 資金が増える場合のみ候補に追加
                     if money > self.best_money {
-                        cand.push((money, new_nodes.len(), Reverse(period), station, next));
+                        let future_added_income = (self.T as i64 - self.turn as i64 - period + 1)
+                            * (new_nodes.len() as i64);
+                        cand.push((
+                            money + future_added_income,
+                            new_nodes.len(),
+                            Reverse(period),
+                            station,
+                            next,
+                            false,
+                        ));
                     }
+                }
+            }
+            let rail_position = self.rail_position.clone();
+            for &next in rail_position.iter() {
+                let period = 1;
+                let cost = STATION_COST;
+                // 資金が足りない場合は設置しない
+                if cost > self.money {
+                    break;
+                }
+                let new_nodes = self.get_new_nodes(next, input);
+                // 新規の自宅や職場がない場合はスキップ
+                if new_nodes.is_empty() {
+                    continue;
+                }
+                let added_income = self.calc_added_income(&new_nodes, input);
+                let money = self.calc_future_money(added_income, cost, period);
+                // 資金が増える場合のみ候補に追加
+                if money > self.best_money {
+                    let future_added_income =
+                        (self.T as i64 - self.turn as i64) * (new_nodes.len() as i64);
+                    cand.push((
+                        money + future_added_income,
+                        new_nodes.len(),
+                        Reverse(period),
+                        Coord::new(0, 0),
+                        next,
+                        true,
+                    ));
                 }
             }
             // 資金がない、もしくは設置期間が足りない、資金が増えない場合は待機
             if cand.is_empty() {
                 self.wait();
+                while !self.is_done() && self.money > STATION_COST + RAIL_COST * 20 {
+                    self.wait();
+                }
                 continue;
             }
             cand.sort();
             cand.reverse();
-            let (_, _, _, station, next) = cand[0];
-            self.make_path(station, next, input);
+            let (_, _, _, station, next, flag) = cand[0];
+            if flag {
+                let idx = self.rail_position.iter().position(|&x| x == next).unwrap();
+                self.rail_position.remove(idx);
+                let new_nodes = self.get_new_nodes(next, input);
+                let added_income = self.calc_added_income(&new_nodes, input);
+                self.income += added_income;
+                self.make_station(next, 1, input);
+            } else {
+                self.make_path(station, next, input);
+            }
 
             // 駅が設置できるる資金になるまで待機
             while !self.is_done() && self.money < STATION_COST + RAIL_COST * 20 {
