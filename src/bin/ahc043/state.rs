@@ -727,6 +727,7 @@ impl RailTree {
             }
             // 実際の最短距離はマンハッタン距離と異なる場合があるので、駅に線路を敷く場合がある
             cand.sort();
+            let mut ok = false;
             for (_, from, mut to) in cand {
                 let prev = self.station_position[from];
                 let mut next = self.station_position[to];
@@ -785,6 +786,10 @@ impl RailTree {
                 self.field[next.i][next.j] = Entity::Station;
                 G[from].push((to, d));
                 G[to].push((from, d));
+                ok = true;
+                break;
+            }
+            if !ok {
                 break;
             }
         }
