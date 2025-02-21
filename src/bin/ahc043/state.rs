@@ -1,5 +1,7 @@
 use std::cmp::Reverse;
 
+use rustc_hash::FxHashSet;
+
 use crate::{
     bfs::{
         bfs_revert, A_star, BfsGenerator, Dijkstra_multi_start, Dijkstra_multi_start_revert,
@@ -466,10 +468,12 @@ impl State {
             let L = rail_tree.station_position.len();
             let mut dist = vec![NOT_VISITED; L];
             let mut from_station = vec![];
+            let mut ng_station = FxHashSet::default();
             for idx in 0..L {
                 // 1: rail, 線路に駅を設置
                 if self.used[idx] == 1 {
                     dist[idx] = CANNOT_VISIT; // 線路を伸ばして駅を設置するときに通らないように設定しておく
+                    ng_station.insert(idx);
                     if self.money < STATION_COST {
                         continue;
                     }
@@ -508,6 +512,9 @@ impl State {
                     continue;
                 }
                 if self.money < STATION_COST + (period as i64 - 1) * RAIL_COST {
+                    continue;
+                }
+                if ng_station.contains(&to_idx) {
                     continue;
                 }
                 let from = rail_tree.station_position[from_idx];
