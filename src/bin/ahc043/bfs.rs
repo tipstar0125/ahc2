@@ -1,6 +1,6 @@
-use std::{cmp::Reverse, collections::{BinaryHeap, VecDeque}};
+use std::{cmp::Reverse, collections::{BinaryHeap, VecDeque}, vec};
 
-use crate::coord::{calc_manhattan_dist, Coord, DIJ4};
+use crate::{coord::calc_manhattan_dist, Coord, DIJ4};
 
 pub const NOT_VISITED: usize = 1 << 60;
 pub const CANNOT_VISIT: usize = !0;
@@ -94,4 +94,59 @@ pub fn bfs_revert(start: Coord, goal: Coord, dist: &Vec<Vec<usize>>)-> Vec<Coord
     }
     ret.reverse();
     ret
+}
+
+
+pub fn Dijkstra_multi_start(starts: Vec<usize>, dist: &mut Vec<usize>, G: &Vec<Vec<(usize, usize)>>) {
+    let mut queue = BinaryHeap::new();
+    for idx in starts {
+        dist[idx] = 0;
+        queue.push((Reverse(0), idx));
+    }
+    
+    while let Some((Reverse(d),from)) = queue.pop() {
+        if dist[from] < d {
+            continue;
+        }
+        
+        for &(to, cost) in G[from].iter() {
+            if dist[to] == CANNOT_VISIT {
+                continue;
+            }
+            if dist[to] > d + cost {
+                dist[to] = d + cost;
+                queue.push((Reverse(d+cost), to));
+            }            
+        }
+    }
+}
+
+pub fn Dijkstra_multi_start_revert(dist: &Vec<usize>, G: &Vec<Vec<(usize, usize)>>) -> Vec<(usize, usize, usize, Vec<usize>)> {
+    let mut routes = vec![];
+    for (idx, &d) in dist.iter().enumerate() {
+        if d==0 || d == CANNOT_VISIT || d == NOT_VISITED {
+            continue;
+        }
+        let mut to = idx;
+        let mut now = d; 
+        let mut route = vec![];
+        while now > 0 {
+            for &(from, cost) in G[to].iter() {
+                if dist[from] == CANNOT_VISIT || dist[from] == NOT_VISITED {
+                    continue;
+                }
+                if dist[from] == now - cost {
+                    to = from;
+                    now -= cost;
+                    if now > 0 {
+                        route.push(to);
+                    }
+                    break;
+                }
+            }
+        }
+        routes.push((to, idx, d, route));
+        
+    }
+    routes
 }

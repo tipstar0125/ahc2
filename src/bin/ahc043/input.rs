@@ -1,6 +1,6 @@
 use proconio::input;
 
-use crate::coord::Coord;
+use crate::{coord::Coord, hash::CalcHash};
 
 pub fn read_input() -> Input {
     input! {
@@ -22,6 +22,8 @@ pub fn read_input() -> Input {
         home_workspace_field[iw][jw].push(idx + M);
     }
 
+    let calc_hash = CalcHash::new(N);
+
     Input {
         N,
         M,
@@ -30,6 +32,7 @@ pub fn read_input() -> Input {
         home,
         workspace,
         home_workspace_field,
+        calc_hash,
     }
 }
 
@@ -42,4 +45,5 @@ pub struct Input {
     pub home: Vec<Coord>,
     pub workspace: Vec<Coord>,
     pub home_workspace_field: Vec<Vec<Vec<usize>>>,
+    pub calc_hash: CalcHash,
 }
