@@ -42,17 +42,20 @@ fn main() {
 
 fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
     let mut turn = 0;
+    let mut make_status = vec![vec![false; input.N]; input.N];
 
     for op in ops.iter() {
         if op.is_wait {
             turn += 1;
             println!("# turn: {}, wait", turn);
             println!("-1");
+            // eprintln!("-1");
         } else if op.from.is_none() {
             let (to, _) = op.to;
             turn += 1;
             println!("# turn: {}, station: {}", turn, to);
             println!("0 {} {}", to.i, to.j);
+            // eprintln!("0 {} {}", to.i, to.j);
         } else {
             let (from, _) = op.from.unwrap();
             let (to, _) = op.to;
@@ -60,7 +63,7 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
             let mut dist = vec![vec![NOT_VISITED; input.N]; input.N];
             for i in 0..input.N {
                 for j in 0..input.N {
-                    if rail_tree.field[i][j] == Entity::Empty {
+                    if rail_tree.field[i][j] == Entity::Empty || make_status[i][j] {
                         dist[i][j] = CANNOT_VISIT;
                     }
                 }
@@ -73,17 +76,16 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
                 let next = route[i + 1];
                 let now = route[i];
                 let t = to_rail_type(prev, now, next);
+                make_status[now.i][now.j] = true;
                 turn += 1;
                 println!("# turn: {}, rail: {} {}", turn, t as i64, now);
                 println!("{} {} {}", t as i64, now.i, now.j);
-            }
-            if turn == 504 {
-                eprintln!("turn: {}, from: {:?}, to: {:?}", turn, from, to);
             }
 
             turn += 1;
             println!("# turn: {}, station: {}", turn, to);
             println!("0 {} {}", to.i, to.j);
+            // eprintln!("0 {} {}", to.i, to.j);
         }
     }
 
@@ -91,6 +93,7 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
         turn += 1;
         println!("# turn: {}, wait", turn);
         println!("-1");
+        // eprintln!("-1");
     }
 }
 
@@ -113,8 +116,8 @@ pub fn A_star_rail_tree(
             return;
         }
 
-        let dij = get_dij(field[pos.i][pos.j]);
-        for &dij in dij.iter() {
+        let dijx = get_dij(field[pos.i][pos.j]);
+        for &dij in dijx.iter() {
             let next = pos + dij;
             if next.in_map(N)
                 && dist[next.i][next.j] != CANNOT_VISIT
@@ -156,14 +159,14 @@ pub fn A_star_revert(
     let mut pos = goal;
     let mut now = dist[goal.i][goal.j];
     while pos != start {
-        let dij = get_dij(field[pos.i][pos.j]);
-        for &dij in dij.iter() {
+        let dijx = get_dij(field[pos.i][pos.j]);
+        for dij in dijx {
             let next = pos + dij;
             if next.in_map(N) && dist[next.i][next.j] == now - 1 {
                 let can_go = {
                     let mut ok = false;
-                    let dij2 = get_dij(field[next.i][next.j]);
-                    for &dij2 in dij2.iter() {
+                    let dijx2 = get_dij(field[next.i][next.j]);
+                    for &dij2 in dijx2.iter() {
                         let nn = next + dij2;
                         if nn.in_map(N) && nn == pos {
                             ok = true;
@@ -175,9 +178,7 @@ pub fn A_star_revert(
                     pos = next;
                     now -= 1;
                     ret.push(pos);
-                    if pos == start {
-                        break;
-                    }
+                    break;
                 }
             }
         }
