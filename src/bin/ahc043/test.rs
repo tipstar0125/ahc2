@@ -12,6 +12,8 @@ mod tests {
     #[derive(Debug, Serialize, Deserialize)]
     struct Result {
         test_number: String,
+        M: usize,
+        K: usize,
         score: usize,
         elapsed_time: f64,
         is_ac: bool,
@@ -27,8 +29,8 @@ mod tests {
             }
             write!(
                 f,
-                "{},{},{},{}",
-                self.test_number, self.score, self.elapsed_time, result
+                "{},{},{},{},{},{}",
+                self.test_number, self.M, self.K, self.score, self.elapsed_time, result
             )?;
             Ok(())
         }
@@ -64,11 +66,8 @@ mod tests {
         line.strip_prefix(start).unwrap().parse::<usize>().unwrap()
     }
 
-    fn parse_elapsed_time(line: &str) -> f64 {
-        line.strip_prefix("Elapsed time = ")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap()
+    fn parse_float(line: &str, start: &str) -> f64 {
+        line.strip_prefix(start).unwrap().parse::<f64>().unwrap()
     }
 
     fn run(test_number: usize, before_score: usize) -> Result {
@@ -97,12 +96,24 @@ mod tests {
             .unwrap();
 
         // 標準エラー出力よりスコアと実行時間を取得
+        let mut score = 0;
         let mut elapsed_time = 0.0;
+        let mut M = 0;
+        let mut K = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
+            if line.starts_with("Score = ") {
+                score = parse_int(line, "Score = ");
+            }
             if line.starts_with("Elapsed time = ") {
-                elapsed_time = parse_elapsed_time(line);
+                elapsed_time = parse_float(line, "Elapsed time = ");
+            }
+            if line.starts_with("M = ") {
+                M = parse_int(line, "M = ");
+            }
+            if line.starts_with("K = ") {
+                K = parse_int(line, "K = ");
             }
         }
 
@@ -118,12 +129,14 @@ mod tests {
         let delta_score = vis_score as i64 - before_score as i64;
 
         println!(
-            "{}: score={}, elapsed={}, delta={}",
-            if vis_score == 0 {
-                test_number.to_string().red()
-            } else {
+            "{}: M={}, K={}, score={}, elapsed={}, delta={}",
+            if vis_score == score {
                 test_number.to_string().green()
+            } else {
+                test_number.to_string().red()
             },
+            M,
+            K,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -141,6 +154,8 @@ mod tests {
 
         Result {
             test_number,
+            M,
+            K,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -179,7 +194,7 @@ mod tests {
         writeln!(json_file, "{}", serde_json::to_string(&results).unwrap()).unwrap();
 
         let mut file = File::create("results.csv").unwrap();
-        writeln!(file, "{}", "test_num,score,elapsed,result,delta").unwrap();
+        writeln!(file, "{}", "test_num,M,K,score,elapsed,result,delta").unwrap();
         let mut score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;

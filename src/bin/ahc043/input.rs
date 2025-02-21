@@ -24,6 +24,9 @@ pub fn read_input() -> Input {
 
     let calc_hash = CalcHash::new(N);
 
+    eprintln!("M = {}", M);
+    eprintln!("K = {}", K);
+
     Input {
         N,
         M,
