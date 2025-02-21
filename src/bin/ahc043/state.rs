@@ -469,10 +469,10 @@ impl State {
             for idx in 0..L {
                 // 1: rail, 線路に駅を設置
                 if self.used[idx] == 1 {
+                    dist[idx] = CANNOT_VISIT; // 線路を伸ばして駅を設置するときに通らないように設定しておく
                     if self.money < STATION_COST {
                         continue;
                     }
-                    dist[idx] = CANNOT_VISIT; // 線路を伸ばして駅を設置するときに通らないように設定しておく
                     let to = rail_tree.station_position[idx];
                     let op = Op {
                         from: None,
@@ -563,20 +563,6 @@ impl State {
         if op.is_wait {
             self.money += self.income;
         } else {
-            let to = op.to.0;
-            let from = op.from;
-            if self.turn == 308 && from.is_none() && to == Coord::new(18, 33) {
-                eprintln!(
-                    "turn: {}, money: {}, income: {}",
-                    self.turn, self.money, self.income
-                );
-                for (idx, &b) in self.used.iter().enumerate() {
-                    if b > 0 {
-                        let coord = _rail_tree.station_position[idx];
-                        eprintln!("{}: {}", idx, coord);
-                    }
-                }
-            }
             let new_nodes = self.get_new_nodes(op.to.0, input);
             let added_income = self.calc_added_income(&new_nodes, input);
             self.money -= STATION_COST;
@@ -768,8 +754,8 @@ impl RailTree {
                     .iter()
                     .position(|&x| x == route[0])
                     .unwrap();
-                let d = route.len() - 1;
 
+                let mut d = 1;
                 for i in 1..route.len() - 1 {
                     let prev = route[i - 1];
                     let now = route[i];
@@ -786,6 +772,7 @@ impl RailTree {
                     let t = to_rail_type(prev, now, next);
                     self.rail_position.push(now);
                     self.field[now.i][now.j] = Entity::Rail(t);
+                    d += 1;
                 }
                 used[to] = true;
                 self.field[next.i][next.j] = Entity::Station;
