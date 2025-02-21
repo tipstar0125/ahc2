@@ -458,6 +458,7 @@ impl State {
                 let hash = input.calc_hash.calc(self.hash, to);
                 cand.push((
                     score * input.T as i64 / (self.turn as i64 + 1),
+                    // score,
                     hash,
                     op,
                     false,
@@ -493,6 +494,7 @@ impl State {
                         + (input.T - self.turn) as i64 * (self.income + added_income);
                     cand.push((
                         score * input.T as i64 / (self.turn as i64 + 1),
+                        // score,
                         hash,
                         op,
                         is_done,
