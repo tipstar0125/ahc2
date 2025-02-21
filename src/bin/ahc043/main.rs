@@ -91,7 +91,7 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
 
     while turn < input.T {
         turn += 1;
-        println!("# turn: {}, wait", turn);
+        println!("# turn: {}, wait added", turn);
         println!("-1");
         // eprintln!("-1");
     }
