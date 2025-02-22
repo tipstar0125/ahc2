@@ -127,18 +127,16 @@ impl BeamSearch {
                 if score_order == ScoreOrder::Ascending {
                     cands.sort_unstable_by_key(|a| a.eval_score);
                 } else {
-                    cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
+                    // cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
+                    cands.sort_unstable_by_key(|a| Reverse(a.op.score));
                 }
-                for i in 0..cands.len() {
-                    if cands[i].is_done {
-                        eprintln!("t = {}, score = {}", t, cands[i].eval_score);
-                        if cands[i].op.score > best_score {
-                            best_score = cands[i].eval_score;
-                            let mut ops = self.restore(cands[i].parent);
-                            ops.push(cands[i].op.clone());
-                            best_ops = ops;
-                        }
-                        break;
+                if !cands.is_empty() {
+                    let best_cand = &cands[0];
+                    if best_cand.op.score > best_score {
+                        best_score = best_cand.op.score;
+                        let mut ops = self.restore(best_cand.parent);
+                        ops.push(best_cand.op.clone());
+                        best_ops = ops;
                     }
                 }
                 set.clear();

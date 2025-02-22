@@ -30,7 +30,7 @@ fn solve(input: &Input) {
         rail_tree.greedy_station(input);
         rail_tree.prim(input);
         let mut beam = BeamSearch::new(input, &rail_tree);
-        let width = 100;
+        let width = 300;
         let ops = beam.solve(width, input.T, input, &rail_tree, ScoreOrder::Descending);
         output(&ops, input, &rail_tree);
     } else {
