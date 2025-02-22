@@ -118,6 +118,8 @@ impl BeamSearch {
         score_order: ScoreOrder,
     ) -> Vec<Op> {
         let mut cands = Vec::<Cand>::new();
+        let mut best_score = 0;
+        let mut best_ops = vec![];
         let mut set = FxHashSet::default();
         let mut rng = rand_pcg::Pcg64Mcg::new(0);
         for t in 0..depth {
@@ -127,14 +129,23 @@ impl BeamSearch {
                 } else {
                     cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
                 }
-                let best_cand = &cands[0];
-                if best_cand.is_done {
-                    break;
+                for i in 0..cands.len() {
+                    if cands[i].is_done {
+                        eprintln!("t = {}, score = {}", t, cands[i].eval_score);
+                        if cands[i].op.score > best_score {
+                            best_score = cands[i].eval_score;
+                            let mut ops = self.restore(cands[i].parent);
+                            ops.push(cands[i].op.clone());
+                            best_ops = ops;
+                        }
+                        break;
+                    }
                 }
                 set.clear();
                 self.update(
                     cands
                         .iter()
+                        .filter(|cand| !cand.is_done)
                         .filter(|cand| set.insert(cand.hash))
                         .take(width)
                         .cloned(),
@@ -145,15 +156,7 @@ impl BeamSearch {
             cands.clear();
             self.append_cands(input, rail_tree, &mut cands, &mut rng);
         }
-
-        let best = if score_order == ScoreOrder::Ascending {
-            cands.iter().min_by_key(|a| a.raw_score(input)).unwrap()
-        } else {
-            cands.iter().max_by_key(|a| a.raw_score(input)).unwrap()
-        };
-        eprintln!("Score = {}", best.raw_score(input));
-        let mut ret = self.restore(best.parent);
-        ret.push(best.op.clone());
-        ret
+        eprintln!("Score = {}", best_score);
+        best_ops
     }
 }

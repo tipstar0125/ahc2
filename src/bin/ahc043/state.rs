@@ -376,6 +376,7 @@ pub struct Op {
     pub period: usize,
     pub route: Vec<usize>,
     pub is_wait: bool,
+    pub score: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -448,16 +449,17 @@ impl State {
         if self.turn == 0 {
             for (idx, &to) in rail_tree.station_position.iter().enumerate() {
                 let period = 1;
+                let mut score = self.money - STATION_COST;
                 let op = Op {
                     from: None,
                     to: (to, idx),
                     period,
                     route: vec![],
+                    score,
                     is_wait: false,
                 };
-                let score = self.money - STATION_COST;
-                // let score = (self.money - STATION_COST) * input.T as i64
-                //     / (self.turn as i64 + period as i64);
+                score *= input.T as i64;
+                score /= self.turn as i64 + period as i64;
                 let hash = input.calc_hash.calc(self.hash, to);
                 cand.push((score, hash, op, false));
             }
@@ -476,23 +478,22 @@ impl State {
                     }
                     let to = rail_tree.station_position[idx];
                     let period = 1;
+                    let hash = input.calc_hash.calc(self.hash, to);
+                    let is_done = self.turn + period == input.T;
+                    let new_nodes = self.get_new_nodes(to, input);
+                    let added_income = self.calc_added_income(&new_nodes, input);
+                    let mut score = self.money - STATION_COST
+                        + (input.T - self.turn) as i64 * (self.income + added_income);
                     let op = Op {
                         from: None,
                         to: (to, idx),
                         period,
                         route: vec![],
+                        score,
                         is_wait: false,
                     };
-                    let hash = input.calc_hash.calc(self.hash, to);
-                    let is_done = self.turn + period == input.T;
-                    let new_nodes = self.get_new_nodes(to, input);
-                    let added_income = self.calc_added_income(&new_nodes, input);
-                    let score = self.money - STATION_COST
-                        + (input.T - self.turn) as i64 * (self.income + added_income);
-                    // let score = (self.money - STATION_COST
-                    //     + (input.T - self.turn) as i64 * (self.income + added_income))
-                    //     * input.T as i64
-                    //     / (self.turn as i64 + period as i64);
+                    score *= input.T as i64;
+                    score /= self.turn as i64 + period as i64;
                     cand.push((score, hash, op, is_done));
                 }
                 // 2: station, 線路を伸ばして駅を設置
@@ -515,40 +516,39 @@ impl State {
                 }
                 let from = rail_tree.station_position[from_idx];
                 let to = rail_tree.station_position[to_idx];
+                let hash = input.calc_hash.calc(self.hash, to);
+                let is_done = self.turn + period == input.T;
+                let new_nodes = self.get_new_nodes(to, input);
+                let added_income = self.calc_added_income(&new_nodes, input);
+                let mut score = self.money - STATION_COST - (period as i64 - 1) * RAIL_COST
+                    + (input.T - self.turn) as i64 * self.income
+                    + (input.T - self.turn - period + 1) as i64 * added_income;
                 let op = Op {
                     from: Some((from, from_idx)),
                     to: (to, to_idx),
                     period,
                     route,
+                    score,
                     is_wait: false,
                 };
-                let hash = input.calc_hash.calc(self.hash, to);
-                let is_done = self.turn + period == input.T;
-                let new_nodes = self.get_new_nodes(to, input);
-                let added_income = self.calc_added_income(&new_nodes, input);
-                let score = self.money - STATION_COST - (period as i64 - 1) * RAIL_COST
-                    + (input.T - self.turn) as i64 * self.income
-                    + (input.T - self.turn - period + 1) as i64 * added_income;
-                // let score = (self.money - STATION_COST - (period as i64 - 1) * RAIL_COST
-                //     + (input.T - self.turn) as i64 * self.income
-                //     + (input.T - self.turn - period + 1) as i64 * added_income)
-                //     * input.T as i64
-                //     / (self.turn as i64 + period as i64);
+                score *= input.T as i64;
+                score /= self.turn as i64 + period as i64;
                 cand.push((score, hash, op, is_done));
             }
         }
         // wait
         let period = 1;
+        let mut score = self.money + (input.T - self.turn) as i64 * self.income;
         let op = Op {
             from: None,
             to: (Coord::new(!0, !0), !0),
             period,
             route: vec![],
+            score,
             is_wait: true,
         };
-        let score = self.money + (input.T - self.turn) as i64 * self.income;
-        // let score = (self.money + (input.T - self.turn) as i64 * self.income) * input.T as i64
-        //     / (self.turn as i64 + period as i64);
+        score *= input.T as i64;
+        score /= self.turn as i64 + period as i64;
         cand.push((score, self.hash, op, self.turn + period == input.T));
         cand
     }
