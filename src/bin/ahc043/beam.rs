@@ -127,7 +127,6 @@ impl BeamSearch {
                 if score_order == ScoreOrder::Ascending {
                     cands.sort_unstable_by_key(|a| a.eval_score);
                 } else {
-                    // cands.sort_unstable_by_key(|a| Reverse(a.eval_score));
                     cands.sort_unstable_by_key(|a| Reverse(a.op.score));
                 }
                 if !cands.is_empty() {
