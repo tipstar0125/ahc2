@@ -667,6 +667,7 @@ impl RailTree {
             }
             cnt += added;
         }
+        self.station_position = self.station_position.iter().take(100).cloned().collect();
     }
     pub fn can_connect(&self, station_pos: Coord, input: &Input) -> bool {
         // 駅が設置されていない場所には線路を設置できない

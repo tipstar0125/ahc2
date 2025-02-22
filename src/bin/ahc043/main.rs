@@ -29,8 +29,9 @@ fn solve(input: &Input) {
         let mut rail_tree = RailTree::new(input);
         rail_tree.greedy_station(input);
         rail_tree.prim(input);
+        eprintln!("L = {}", rail_tree.station_position.len());
         let mut beam = BeamSearch::new(input, &rail_tree);
-        let width = 300;
+        let width = 500;
         let ops = beam.solve(width, input.T, input, &rail_tree, ScoreOrder::Descending);
         output(&ops, input, &rail_tree);
     } else {
