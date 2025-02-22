@@ -537,19 +537,21 @@ impl State {
             }
         }
         // wait
-        let period = 1;
-        let mut score = self.money + (input.T - self.turn) as i64 * self.income;
-        let op = Op {
-            from: None,
-            to: (Coord::new(!0, !0), !0),
-            period,
-            route: vec![],
-            score,
-            is_wait: true,
-        };
-        score *= input.T as i64;
-        score /= self.turn as i64 + period as i64;
-        cand.push((score, self.hash, op, self.turn + period == input.T));
+        if self.turn > 1 {
+            let period = 1;
+            let mut score = self.money + (input.T - self.turn) as i64 * self.income;
+            let op = Op {
+                from: None,
+                to: (Coord::new(!0, !0), !0),
+                period,
+                route: vec![],
+                score,
+                is_wait: true,
+            };
+            score *= input.T as i64;
+            score /= self.turn as i64 + period as i64;
+            cand.push((score, self.hash, op, self.turn + period == input.T));
+        }
         cand
     }
     pub fn apply(
