@@ -105,9 +105,9 @@ pub fn Dijkstra_multi_start(starts: Vec<usize>, dist: &mut Vec<usize>, G: &Vec<V
     }
     
     while let Some((Reverse(d),from)) = queue.pop() {
-        if d > 50 {
-            break;
-        }
+        // if d > 50 {
+        //     break;
+        // }
         if dist[from] < d {
             continue;
         }
