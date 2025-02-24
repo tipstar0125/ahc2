@@ -370,6 +370,7 @@ impl Stat {
     }
 }
 
+
 #[derive(Debug, Clone)]
 pub struct Op {
     pub from: Option<(Coord, usize)>,
@@ -582,6 +583,14 @@ impl State {
             for &idx in op.route.iter() {
                 assert!(self.used[idx] == 0);
                 self.used[idx] = 1;
+            }
+            if op.from.is_some()
+                && op.from.unwrap().0 == Coord::new(22, 43)
+                && op.to.0 == Coord::new(8, 9)
+            {
+                for &idx in op.route.iter() {
+                    eprintln!("{}", _rail_tree.station_position[idx]);
+                }
             }
         }
 
@@ -809,7 +818,8 @@ impl RailTree {
         }
         let mut cand = vec![];
 
-        let step = if input.M < 1000 { 1 } else { 2 };
+        // let step = if input.M < 1000 { 1 } else { 2 };
+        let step = 2;
         for i0 in (1..input.N - 1).step_by(step) {
             for j0 in (1..input.N - 1).step_by(step) {
                 for i1 in (i0 + 1..input.N - 1).step_by(step) {
@@ -876,7 +886,13 @@ impl RailTree {
 
         while self.station_position.len() < 200 {
             let mut cand = vec![];
-            for pos in self.rail_position.iter() {
+            'outer: for &pos in self.rail_position.iter() {
+                for &dij in DIJ4.iter() {
+                    let next = pos + dij;
+                    if next.in_map(input.N) && self.field[next.i][next.j] == Entity::Station {
+                        continue 'outer;
+                    }
+                }
                 let mut income = 0;
                 let mut new_nodes_cnt = 0;
                 for &node in nodes[pos.i][pos.j].iter() {
@@ -904,16 +920,16 @@ impl RailTree {
                     }
                 }
                 if new_nodes_cnt > 0 {
-                    cand.push((income * 1000, Coord::new(!0, !0), *pos));
+                    cand.push((income * 1000, Coord::new(!0, !0), pos));
                 }
             }
 
             for &from in self.station_position.iter() {
                 let mut visited = vec![vec![0; input.N]; input.N];
                 for pos in self
-                    .station_position
+                    .rail_position
                     .iter()
-                    .chain(self.rail_position.iter())
+                    .chain(self.station_position.iter())
                 {
                     visited[pos.i][pos.j] = CANNOT_VISIT;
                 }
@@ -923,7 +939,7 @@ impl RailTree {
                     if dist == 0 {
                         continue;
                     }
-                    if dist > 50 {
+                    if dist > 25 {
                         break;
                     }
                     let mut income = 0;
@@ -1059,7 +1075,7 @@ impl RailTree {
                                     .position(|&x| x == next)
                                     .unwrap();
                                 self.G[start_idx].push((next_idx, d + 1));
-                                self.G[next_idx].push((start_idx, d + 1));
+                                // self.G[next_idx].push((start_idx, d + 1));
                             } else {
                                 queue.push((Reverse(d + 1), next));
                             }

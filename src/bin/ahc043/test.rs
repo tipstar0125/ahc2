@@ -172,8 +172,8 @@ mod tests {
 
     #[test]
     fn multi() {
-        let job_num = 4;
-        let test_case_num = 100;
+        let job_num = 1;
+        let test_case_num = 50;
 
         let initial_score = 0;
         let before_scores = match File::open("before.json") {
@@ -219,7 +219,7 @@ mod tests {
         }
         let total = format!(
             "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
-            score_sum / 2,
+            score_sum,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,

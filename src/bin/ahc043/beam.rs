@@ -3,6 +3,7 @@ use std::cmp::Reverse;
 use rustc_hash::FxHashSet;
 
 use crate::{
+    common::get_time,
     input::Input,
     state::{Op, RailTree, State},
 };
@@ -122,7 +123,16 @@ impl BeamSearch {
         let mut best_ops = vec![];
         let mut set = FxHashSet::default();
         let mut rng = rand_pcg::Pcg64Mcg::new(0);
+        let mut w = width;
+
         for t in 0..depth {
+            if get_time() > 2.0 {
+                w = 100;
+            } else if get_time() > 2.5 {
+                w = 50;
+            } else if get_time() > 2.8 {
+                w = 10;
+            } 
             if t != 0 {
                 if score_order == ScoreOrder::Ascending {
                     cands.sort_unstable_by_key(|a| a.eval_score);
@@ -144,7 +154,7 @@ impl BeamSearch {
                         .iter()
                         .filter(|cand| !cand.is_done)
                         .filter(|cand| set.insert(cand.hash))
-                        .take(width)
+                        .take(w)
                         .cloned(),
                     input,
                     rail_tree,

@@ -21,14 +21,11 @@ mod input;
 mod state;
 mod test;
 
-const TLE: f64 = 2.95;
+const TLE: f64 = 2.9;
 
 fn solve(input: &Input) {
-    let flag = true;
-    if flag {
+    if input.M > 700 {
         let mut rail_tree = RailTree::new(input);
-        // rail_tree.greedy_station(input);
-        // rail_tree.prim(input);
         rail_tree.make_tree(input);
         eprintln!("L = {}", rail_tree.station_position.len());
         let mut beam = BeamSearch::new(input, &rail_tree);
@@ -83,7 +80,7 @@ fn solve(input: &Input) {
         }
 
         for &station in stations.iter() {
-            if get_time() > TLE {
+            if get_time() > 1.0{
                 break;
             }
             let mut state = state::Stat::new(input);
@@ -134,9 +131,7 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
             }
 
             A_star_rail_tree(from, to, &mut dist, &rail_tree.field);
-            // eprintln!("A* done: from: {}, to: {}", from, to);
             let route = A_star_revert(from, to, &dist, &rail_tree.field);
-            // eprintln!("revert done");
             for i in 1..route.len() - 1 {
                 let prev = route[i - 1];
                 let next = route[i + 1];
