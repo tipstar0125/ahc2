@@ -1,4 +1,4 @@
-use std::cmp::Reverse;
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 use rustc_hash::FxHashSet;
 
@@ -9,6 +9,7 @@ use crate::{
     },
     coord::{calc_manhattan_dist, Coord, ADJ, DIJ4, NEG},
     dsu::UnionFind,
+    get_dij,
     input::Input,
 };
 
@@ -790,6 +791,283 @@ impl RailTree {
             }
         }
         self.G = G;
+        self.visualize();
+    }
+    pub fn make_tree(&mut self, input: &Input) {
+        let mut connected = vec![false; input.M * 2];
+        let mut nodes = vec![vec![vec![]; input.N]; input.N];
+        for i in 1..input.N - 1 {
+            for j in 1..input.N - 1 {
+                let pos = Coord::new(i, j);
+                for &dij in ADJ.iter() {
+                    let next = pos + dij;
+                    if next.in_map(input.N) {
+                        nodes[i][j].extend(input.home_workspace_field[next.i][next.j].clone());
+                    }
+                }
+            }
+        }
+        let mut cand = vec![];
+
+        let step = if input.M < 1000 { 1 } else { 2 };
+        for i0 in (1..input.N - 1).step_by(step) {
+            for j0 in (1..input.N - 1).step_by(step) {
+                for i1 in (i0 + 1..input.N - 1).step_by(step) {
+                    for j1 in (j0 + 1..input.N - 1).step_by(step) {
+                        let pos0 = Coord::new(i0, j0);
+                        let pos1 = Coord::new(i1, j1);
+                        if pos0 == pos1 {
+                            continue;
+                        }
+                        let dist = calc_manhattan_dist(pos0, pos1);
+                        if dist > (input.N - 10000) / 100 {
+                            continue;
+                        }
+                        let homes = nodes[i0][j0]
+                            .iter()
+                            .chain(nodes[i1][j1].iter())
+                            .filter(|&&x| x < input.M)
+                            .cloned();
+                        let works = nodes[i0][j0]
+                            .iter()
+                            .chain(nodes[i1][j1].iter())
+                            .filter(|&&x| x >= input.M)
+                            .cloned();
+                        let mut score = 0;
+                        for home in homes {
+                            for work in works.clone() {
+                                if home + input.M == work {
+                                    let home_pos = input.home[home];
+                                    let work_pos = input.workspace[work - input.M];
+                                    score += calc_manhattan_dist(home_pos, work_pos);
+                                }
+                            }
+                        }
+                        cand.push((score * 1000 / dist, pos0, pos1));
+                    }
+                }
+            }
+        }
+
+        cand.sort();
+        cand.reverse();
+        let (_, from, to) = cand[0];
+        let mut dist = vec![vec![NOT_VISITED; input.N]; input.N];
+        A_star(from, to, &mut dist);
+        let route = bfs_revert(from, to, &dist);
+        assert!(route.len() == calc_manhattan_dist(from, to) + 1);
+        for pos in nodes[from.i][from.j].iter().chain(nodes[to.i][to.j].iter()) {
+            connected[*pos] = true;
+        }
+        self.field[from.i][from.j] = Entity::Station;
+        self.field[to.i][to.j] = Entity::Station;
+        self.station_position.push(from);
+        self.station_position.push(to);
+        for i in 1..route.len() - 1 {
+            let prev = route[i - 1];
+            let now = route[i];
+            let next = route[i + 1];
+            let t = to_rail_type(prev, now, next);
+            self.field[now.i][now.j] = Entity::Rail(t);
+            self.rail_position.push(now);
+        }
+        eprintln!("initial");
+        eprintln!("from: {}, to: {}", from, to);
+
+        while self.station_position.len() < 200 {
+            let mut cand = vec![];
+            for pos in self.rail_position.iter() {
+                let mut income = 0;
+                let mut new_nodes_cnt = 0;
+                for &node in nodes[pos.i][pos.j].iter() {
+                    if connected[node] {
+                        continue;
+                    }
+                    new_nodes_cnt += 1;
+                    let pair_node = if node < input.M {
+                        node + input.M
+                    } else {
+                        node - input.M
+                    };
+                    if connected[pair_node] {
+                        let new_coord = if node < input.M {
+                            input.home[node]
+                        } else {
+                            input.workspace[node - input.M]
+                        };
+                        let pair_coord = if pair_node < input.M {
+                            input.home[pair_node]
+                        } else {
+                            input.workspace[pair_node - input.M]
+                        };
+                        income += calc_manhattan_dist(new_coord, pair_coord);
+                    }
+                }
+                if new_nodes_cnt > 0 {
+                    cand.push((income * 1000, Coord::new(!0, !0), *pos));
+                }
+            }
+
+            for &from in self.station_position.iter() {
+                let mut visited = vec![vec![0; input.N]; input.N];
+                for pos in self
+                    .station_position
+                    .iter()
+                    .chain(self.rail_position.iter())
+                {
+                    visited[pos.i][pos.j] = CANNOT_VISIT;
+                }
+                let mut bfs = BfsGenerator::new(from, &mut 0, &mut visited);
+                while let Some((to, dist)) = bfs.next(1, &mut visited) {
+                    // スタート駅はスキップ
+                    if dist == 0 {
+                        continue;
+                    }
+                    if dist > 50 {
+                        break;
+                    }
+                    let mut income = 0;
+                    let mut new_nodes_cnt = 0;
+                    for &node in nodes[to.i][to.j].iter() {
+                        if connected[node] {
+                            continue;
+                        } else {
+                            new_nodes_cnt += 1;
+                        }
+                        let pair_node = if node < input.M {
+                            node + input.M
+                        } else {
+                            node - input.M
+                        };
+                        if connected[pair_node] {
+                            let new_coord = if node < input.M {
+                                input.home[node]
+                            } else {
+                                input.workspace[node - input.M]
+                            };
+                            let pair_coord = if pair_node < input.M {
+                                input.home[pair_node]
+                            } else {
+                                input.workspace[pair_node - input.M]
+                            };
+                            income += calc_manhattan_dist(new_coord, pair_coord);
+                        }
+                    }
+                    if new_nodes_cnt > 0 {
+                        cand.push((income * 1000 / calc_manhattan_dist(from, to), from, to));
+                    }
+                }
+            }
+            if cand.is_empty() {
+                break;
+            }
+            cand.sort();
+            cand.reverse();
+            let (_, from, to) = cand[0];
+            if from == Coord::new(!0, !0) {
+                //  線路上に駅を設置
+                self.field[to.i][to.j] = Entity::Station;
+                self.station_position.push(to);
+                let idx = self.rail_position.iter().position(|&x| x == to).unwrap();
+                self.rail_position.remove(idx);
+            } else {
+                let mut dist = vec![vec![NOT_VISITED; input.N]; input.N];
+                for pos in self.rail_position.iter() {
+                    dist[pos.i][pos.j] = CANNOT_VISIT;
+                }
+                A_star(from, to, &mut dist);
+                let mut route = bfs_revert(from, to, &dist);
+
+                // // 線路の途中に駅がある場合があるので、最後の駅から一つ手前の駅までを取り出す
+                let idx = {
+                    let mut ret = 0;
+                    for i in (0..route.len() - 1).rev() {
+                        let pos = route[i];
+                        if self.field[pos.i][pos.j] == Entity::Station {
+                            ret = i;
+                            break;
+                        }
+                    }
+                    ret
+                };
+                route = route[idx..].to_vec();
+                for i in 1..route.len() - 1 {
+                    let prev = route[i - 1];
+                    let now = route[i];
+                    let next = route[i + 1];
+                    let t = to_rail_type(prev, now, next);
+                    self.rail_position.push(now);
+                    self.field[now.i][now.j] = Entity::Rail(t);
+                }
+                self.station_position.push(to);
+                self.field[to.i][to.j] = Entity::Station;
+            }
+            for node in nodes[to.i][to.j].iter() {
+                connected[*node] = true;
+            }
+            if connected.iter().all(|&x| x) {
+                break;
+            }
+        }
+        self.G = vec![vec![]; self.station_position.len()];
+        for &start in self.station_position.iter() {
+            let start_idx = self
+                .station_position
+                .iter()
+                .position(|&x| x == start)
+                .unwrap();
+            let mut dist = vec![vec![CANNOT_VISIT; input.N]; input.N];
+            for pos in self
+                .station_position
+                .iter()
+                .chain(self.rail_position.iter())
+            {
+                dist[pos.i][pos.j] = NOT_VISITED;
+            }
+            dist[start.i][start.j] = 0;
+            let mut queue = BinaryHeap::new();
+            queue.push((Reverse(0), start));
+            while let Some((Reverse(d), pos)) = queue.pop() {
+                if dist[pos.i][pos.j] < d {
+                    continue;
+                }
+                let dijx = get_dij(self.field[pos.i][pos.j]);
+                for &dij in dijx.iter() {
+                    let next = pos + dij;
+                    if next.in_map(input.N)
+                        && dist[next.i][next.j] != CANNOT_VISIT
+                        && dist[next.i][next.j] > d + 1
+                    {
+                        let can_go = {
+                            let mut ok = false;
+                            let dijx2 = get_dij(self.field[next.i][next.j]);
+                            for &dij2 in dijx2.iter() {
+                                let nn = next + dij2;
+                                if nn.in_map(input.N) && nn == pos {
+                                    ok = true;
+                                }
+                            }
+                            ok
+                        };
+
+                        if can_go {
+                            dist[next.i][next.j] = d + 1;
+                            if self.field[next.i][next.j] == Entity::Station {
+                                let next_idx = self
+                                    .station_position
+                                    .iter()
+                                    .position(|&x| x == next)
+                                    .unwrap();
+                                self.G[start_idx].push((next_idx, d + 1));
+                                self.G[next_idx].push((start_idx, d + 1));
+                            } else {
+                                queue.push((Reverse(d + 1), next));
+                            }
+                        }
+                    }
+                }
+            }
+        }
         self.visualize();
     }
     pub fn visualize(&self) {

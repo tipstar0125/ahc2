@@ -32,7 +32,6 @@ impl BfsGenerator {
                     && visited[next.i][next.j] != CANNOT_VISIT
                     // まだ訪れていない箇所
                     && visited[next.i][next.j] != bfs_cnt
-                    // 端でない箇所
                 {
                     self.queue.push_back((next, dist + 1));
                     visited[next.i][next.j] = bfs_cnt;

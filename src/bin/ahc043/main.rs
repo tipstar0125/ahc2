@@ -27,11 +27,12 @@ fn solve(input: &Input) {
     let flag = true;
     if flag {
         let mut rail_tree = RailTree::new(input);
-        rail_tree.greedy_station(input);
-        rail_tree.prim(input);
+        // rail_tree.greedy_station(input);
+        // rail_tree.prim(input);
+        rail_tree.make_tree(input);
         eprintln!("L = {}", rail_tree.station_position.len());
         let mut beam = BeamSearch::new(input, &rail_tree);
-        let width = 500;
+        let width = 300;
         let ops = beam.solve(width, input.T, input, &rail_tree, ScoreOrder::Descending);
         output(&ops, input, &rail_tree);
     } else {
@@ -133,7 +134,9 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
             }
 
             A_star_rail_tree(from, to, &mut dist, &rail_tree.field);
+            // eprintln!("A* done: from: {}, to: {}", from, to);
             let route = A_star_revert(from, to, &dist, &rail_tree.field);
+            // eprintln!("revert done");
             for i in 1..route.len() - 1 {
                 let prev = route[i - 1];
                 let next = route[i + 1];
@@ -142,6 +145,7 @@ fn output(ops: &Vec<Op>, input: &Input, rail_tree: &RailTree) {
                 make_status[now.i][now.j] = true;
                 turn += 1;
                 println!("# turn: {}, rail: {} {}", turn, t as i64, now);
+                // eprintln!("# turn: {}, rail: {} {}", turn, t as i64, now);
                 println!("{} {} {}", t as i64, now.i, now.j);
             }
 
