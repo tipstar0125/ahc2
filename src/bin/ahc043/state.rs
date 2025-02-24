@@ -370,7 +370,6 @@ impl Stat {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Op {
     pub from: Option<(Coord, usize)>,
@@ -818,73 +817,83 @@ impl RailTree {
         }
         let mut cand = vec![];
 
-        // let step = if input.M < 1000 { 1 } else { 2 };
-        let step = 2;
-        for i0 in (1..input.N - 1).step_by(step) {
-            for j0 in (1..input.N - 1).step_by(step) {
-                for i1 in (i0 + 1..input.N - 1).step_by(step) {
-                    for j1 in (j0 + 1..input.N - 1).step_by(step) {
-                        let pos0 = Coord::new(i0, j0);
-                        let pos1 = Coord::new(i1, j1);
-                        if pos0 == pos1 {
-                            continue;
-                        }
-                        let dist = calc_manhattan_dist(pos0, pos1);
-                        if dist > (input.N - 10000) / 100 {
-                            continue;
-                        }
-                        let homes = nodes[i0][j0]
-                            .iter()
-                            .chain(nodes[i1][j1].iter())
-                            .filter(|&&x| x < input.M)
-                            .cloned();
-                        let works = nodes[i0][j0]
-                            .iter()
-                            .chain(nodes[i1][j1].iter())
-                            .filter(|&&x| x >= input.M)
-                            .cloned();
-                        let mut score = 0;
-                        for home in homes {
-                            for work in works.clone() {
-                                if home + input.M == work {
-                                    let home_pos = input.home[home];
-                                    let work_pos = input.workspace[work - input.M];
-                                    score += calc_manhattan_dist(home_pos, work_pos);
-                                }
-                            }
-                        }
-                        cand.push((score * 1000 / dist, pos0, pos1));
-                    }
-                }
+        // let step = 2;
+        // for i0 in (1..input.N - 1).step_by(step) {
+        //     for j0 in (1..input.N - 1).step_by(step) {
+        //         for i1 in (i0 + 1..input.N - 1).step_by(step) {
+        //             for j1 in (j0 + 1..input.N - 1).step_by(step) {
+        //                 let pos0 = Coord::new(i0, j0);
+        //                 let pos1 = Coord::new(i1, j1);
+        //                 if pos0 == pos1 {
+        //                     continue;
+        //                 }
+        //                 let dist = calc_manhattan_dist(pos0, pos1);
+        //                 if dist > (input.N - 10000) / 100 {
+        //                     continue;
+        //                 }
+        //                 let homes = nodes[i0][j0]
+        //                     .iter()
+        //                     .chain(nodes[i1][j1].iter())
+        //                     .filter(|&&x| x < input.M)
+        //                     .cloned();
+        //                 let works = nodes[i0][j0]
+        //                     .iter()
+        //                     .chain(nodes[i1][j1].iter())
+        //                     .filter(|&&x| x >= input.M)
+        //                     .cloned();
+        //                 let mut score = 0;
+        //                 for home in homes {
+        //                     for work in works.clone() {
+        //                         if home + input.M == work {
+        //                             let home_pos = input.home[home];
+        //                             let work_pos = input.workspace[work - input.M];
+        //                             score += calc_manhattan_dist(home_pos, work_pos);
+        //                         }
+        //                     }
+        //                 }
+        //                 cand.push((score * 1000 / dist, pos0, pos1));
+        //             }
+        //         }
+        //     }
+        // }
+
+        // cand.sort();
+        // cand.reverse();
+        // let (_, from, to) = cand[0];
+        // let mut dist = vec![vec![NOT_VISITED; input.N]; input.N];
+        // A_star(from, to, &mut dist);
+        // let route = bfs_revert(from, to, &dist);
+        // assert!(route.len() == calc_manhattan_dist(from, to) + 1);
+        // for pos in nodes[from.i][from.j].iter().chain(nodes[to.i][to.j].iter()) {
+        //     connected[*pos] = true;
+        // }
+        // self.field[from.i][from.j] = Entity::Station;
+        // self.field[to.i][to.j] = Entity::Station;
+        // self.station_position.push(from);
+        // self.station_position.push(to);
+        // for i in 1..route.len() - 1 {
+        //     let prev = route[i - 1];
+        //     let now = route[i];
+        //     let next = route[i + 1];
+        //     let t = to_rail_type(prev, now, next);
+        //     self.field[now.i][now.j] = Entity::Rail(t);
+        //     self.rail_position.push(now);
+        // }
+        // eprintln!("initial");
+        // eprintln!("from: {}, to: {}", from, to);
+
+        for i in 1..input.N - 1 {
+            for j in 1..input.N - 1 {
+                cand.push((nodes[i][j].len(), Coord::new(i, j)));
             }
         }
-
         cand.sort();
         cand.reverse();
-        let (_, from, to) = cand[0];
-        let mut dist = vec![vec![NOT_VISITED; input.N]; input.N];
-        A_star(from, to, &mut dist);
-        let route = bfs_revert(from, to, &dist);
-        assert!(route.len() == calc_manhattan_dist(from, to) + 1);
-        for pos in nodes[from.i][from.j].iter().chain(nodes[to.i][to.j].iter()) {
-            connected[*pos] = true;
-        }
-        self.field[from.i][from.j] = Entity::Station;
-        self.field[to.i][to.j] = Entity::Station;
-        self.station_position.push(from);
-        self.station_position.push(to);
-        for i in 1..route.len() - 1 {
-            let prev = route[i - 1];
-            let now = route[i];
-            let next = route[i + 1];
-            let t = to_rail_type(prev, now, next);
-            self.field[now.i][now.j] = Entity::Rail(t);
-            self.rail_position.push(now);
-        }
-        eprintln!("initial");
-        eprintln!("from: {}, to: {}", from, to);
+        let (_, pos) = cand[0];
+        self.station_position.push(pos);
+        self.field[pos.i][pos.j] = Entity::Station;
 
-        while self.station_position.len() < 200 {
+        while self.station_position.len() < 250 {
             let mut cand = vec![];
             'outer: for &pos in self.rail_position.iter() {
                 for &dij in DIJ4.iter() {
@@ -939,7 +948,7 @@ impl RailTree {
                     if dist == 0 {
                         continue;
                     }
-                    if dist > 25 {
+                    if dist > 20 {
                         break;
                     }
                     let mut income = 0;

@@ -24,7 +24,7 @@ mod test;
 const TLE: f64 = 2.9;
 
 fn solve(input: &Input) {
-    if input.M > 700 {
+    if input.M > 500 {
         let mut rail_tree = RailTree::new(input);
         rail_tree.make_tree(input);
         eprintln!("L = {}", rail_tree.station_position.len());
@@ -80,7 +80,7 @@ fn solve(input: &Input) {
         }
 
         for &station in stations.iter() {
-            if get_time() > 1.0{
+            if get_time() > 1.0 {
                 break;
             }
             let mut state = state::Stat::new(input);
