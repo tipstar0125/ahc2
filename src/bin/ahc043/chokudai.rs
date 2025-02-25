@@ -17,29 +17,32 @@ const BEAM_WIDTH: usize = 100;
 pub fn solve(input: &Input) {
     let stations = make_station_cand(input);
     eprintln!("L = {}", stations.len());
-    let states = make_initial_state(input, &stations);
+    let mut states = make_initial_state(input, &stations);
+    states.sort_unstable_by_key(|s| -s.income);
+    states.truncate(BEAM_WIDTH);
+    let mut beam = vec![vec![]; input.T];
     let mut best_state: State = states[0].clone();
-    let mut beam = vec![vec![]; input.T + 1];
     for state in states {
         if state.income > 0 {
             beam[state.turn].push(state);
         }
     }
 
+    let mut beam_num = 0;
     while get_time() < TLE {
+        beam_num += 1;
+        eprintln!("beam_num = {}", beam_num);
         for turn in 0..input.T {
-            for _ in 0..BEAM_WIDTH {
-                if beam[turn].is_empty() {
-                    break;
-                }
-                beam[turn].sort_unstable_by_key(|s| s.score);
-                beam[turn].truncate(BEAM_WIDTH);
-                let state = beam[turn].pop().unwrap();
-                let next_states = state.cand(input, &stations);
-                for next_state in next_states {
-                    beam[next_state.turn].push(next_state);
-                }
-                break;
+            if beam[turn].is_empty() {
+                continue;
+            }
+            beam[turn].sort_unstable_by_key(|s| -s.income);
+            beam[turn].truncate(BEAM_WIDTH);
+            beam[turn].reverse();
+            let state = beam[turn].pop().unwrap();
+            let next_states = state.cand(input, &stations);
+            for next_state in next_states {
+                beam[next_state.turn].push(next_state);
             }
         }
     }
