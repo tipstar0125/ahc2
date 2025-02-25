@@ -9,7 +9,7 @@ use crate::{
     input::Input,
 };
 
-const TLE: f64 = 2.9;
+const TLE: f64 = 0.8;
 const STATION_COST: i64 = 5000;
 const RAIL_COST: i64 = 100;
 const BEAM_WIDTH: usize = 100;
