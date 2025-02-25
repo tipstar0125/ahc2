@@ -13,6 +13,7 @@ use crate::{common::get_time, coord::ADJ, input::read_input};
 
 mod beam;
 mod bfs;
+mod chokudai;
 mod common;
 mod coord;
 mod dsu;
@@ -24,74 +25,7 @@ mod test;
 const TLE: f64 = 2.9;
 
 fn solve(input: &Input) {
-    if input.M > 500 {
-        let mut rail_tree = RailTree::new(input);
-        rail_tree.make_tree(input);
-        eprintln!("L = {}", rail_tree.station_position.len());
-        let mut beam = BeamSearch::new(input, &rail_tree);
-        let width = 300;
-        let ops = beam.solve(width, input.T, input, &rail_tree, ScoreOrder::Descending);
-        output(&ops, input, &rail_tree);
-    } else {
-        let mut best_score = input.K as i64;
-        let mut best_state = state::Stat::new(input);
-
-        let mut cnt = 0;
-        let mut used_pos = vec![vec![false; input.N]; input.N];
-        let mut used_home_workspace = vec![false; input.M * 2];
-        let mut stations = vec![];
-        while cnt < input.M * 2 {
-            let mut cand = vec![];
-            for i in 1..input.N - 1 {
-                for j in 1..input.N - 1 {
-                    if used_pos[i][j] {
-                        continue;
-                    }
-                    let pos = Coord::new(i, j);
-                    let mut added = 0;
-                    for &dij in ADJ.iter() {
-                        let next = pos + dij;
-                        if next.in_map(input.N) {
-                            for &idx in input.home_workspace_field[next.i][next.j].iter() {
-                                if !used_home_workspace[idx] {
-                                    added += 1;
-                                }
-                            }
-                        }
-                    }
-                    cand.push((added, pos));
-                }
-            }
-            cand.sort();
-            cand.reverse();
-            assert!(!cand.is_empty());
-            let (added, pos) = cand[0];
-            stations.push(pos);
-            used_pos[pos.i][pos.j] = true;
-            for &dij in ADJ.iter() {
-                let next = pos + dij;
-                if next.in_map(input.N) {
-                    for &idx in input.home_workspace_field[next.i][next.j].iter() {
-                        used_home_workspace[idx] = true;
-                    }
-                }
-            }
-            cnt += added;
-        }
-
-        for &station in stations.iter() {
-            if get_time() > 1.0 {
-                break;
-            }
-            let mut state = state::Stat::new(input);
-            let score = state.greedy(station, input);
-            if score > best_score {
-                best_score = score;
-                best_state = state;
-            }
-        }
-        best_state.output();
-    }
+    chokudai::solve(input);
 }
 
 fn main() {
