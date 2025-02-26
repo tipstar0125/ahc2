@@ -12,14 +12,15 @@ use crate::{
 const TLE: f64 = 0.8;
 const STATION_COST: i64 = 5000;
 const RAIL_COST: i64 = 100;
-const BEAM_WIDTH: usize = 100;
+const MAX_SIZE: usize = 20;
+const BEAM_WIDTH: usize = 1;
 
 pub fn solve(input: &Input) {
     let stations = make_station_cand(input);
     eprintln!("L = {}", stations.len());
     let mut states = make_initial_state(input, &stations);
     states.sort_unstable_by_key(|s| -s.income);
-    states.truncate(BEAM_WIDTH);
+    states.truncate(MAX_SIZE);
     let mut beam = vec![vec![]; input.T];
     let mut best_state: State = states[0].clone();
     for state in states {
@@ -33,16 +34,18 @@ pub fn solve(input: &Input) {
         beam_num += 1;
         eprintln!("beam_num = {}", beam_num);
         for turn in 0..input.T {
-            if beam[turn].is_empty() {
-                continue;
-            }
-            beam[turn].sort_unstable_by_key(|s| -s.income);
-            beam[turn].truncate(BEAM_WIDTH);
-            beam[turn].reverse();
-            let state = beam[turn].pop().unwrap();
-            let next_states = state.cand(input, &stations);
-            for next_state in next_states {
-                beam[next_state.turn].push(next_state);
+            for _ in 0..BEAM_WIDTH {
+                if beam[turn].is_empty() {
+                    break;
+                }
+                beam[turn].sort_unstable_by_key(|s| -s.income);
+                beam[turn].truncate(MAX_SIZE);
+                beam[turn].reverse();
+                let state = beam[turn].pop().unwrap();
+                let next_states = state.cand(input, &stations);
+                for next_state in next_states {
+                    beam[next_state.turn].push(next_state);
+                }
             }
         }
     }
