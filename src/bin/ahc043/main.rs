@@ -23,11 +23,11 @@ fn solve(input: &Input) {
     for _ in 0..wait_num {
         println!("-1");
     }
+    eprintln!("Elapsed time = {:.3}", get_time());
 }
 
 fn main() {
     get_time();
     let input = read_input();
     solve(&input);
-    eprintln!("Elapsed time = {:.3}", get_time());
 }

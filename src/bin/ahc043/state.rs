@@ -255,12 +255,19 @@ impl State {
         let mut cands = vec![];
         if self.turn == 0 {
             const MAX_INITIAL_CAND_NUM: usize = 2000;
+            const MIN_NODE_NUM: usize = 2;
             let L = input.covers.len();
             let mut rough_cands = vec![];
-            'a: for i in 0..L {
+            for i in 0..L {
                 let (from, cover0) = &input.covers[i];
+                if cover0.len() < MIN_NODE_NUM {
+                    continue;
+                }
                 for j in i + 1..L {
                     let (to, cover1) = &input.covers[j];
+                    if cover1.len() < MIN_NODE_NUM {
+                        continue;
+                    }
 
                     // 資金が足りない場合はスキップ
                     let dist = calc_manhattan_dist(from, to) as i64;
@@ -351,7 +358,7 @@ impl State {
             }
 
             // 線路を敷いて駅を建てる
-            'a: for i in 0..input.N {
+            for i in 0..input.N {
                 for j in 0..input.N {
                     if self.field[i][j] != STATION {
                         continue;
@@ -393,9 +400,6 @@ impl State {
                             let income_per_turn = income as f64 / (wait_num + dist) as f64;
                             rough_cands.push((income_per_turn, from, *to));
                         }
-                        // if get_time() > input.TLE {
-                        //     break 'a;
-                        // }
                     }
                 }
             }

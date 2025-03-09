@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn multi() {
-        let job_num = 1;
+        let job_num = 4;
         let test_case_num = 50;
 
         let initial_score = 0;
