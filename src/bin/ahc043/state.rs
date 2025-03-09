@@ -7,69 +7,48 @@ use crate::{
 const INF: i64 = 1 << 30;
 const STATION_COST: i64 = 5000;
 const RAIL_COST: i64 = 100;
+const EMPTY: i8 = -1;
+const WAIT: i8 = -1;
+const STATION: i8 = 0;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RailType {
-    LeftToRight = 1,
-    UpToDown = 2,
-    LeftToDown = 3,
-    LeftToUp = 4,
-    UpToRight = 5,
-    DownToRight = 6,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Entity {
-    Station,
-    Rail(RailType),
-    Empty, // Opではwaitとして扱う
-}
-
-pub fn to_rail_type(prev: Coord, now: Coord, next: Coord) -> RailType {
+pub fn to_rail_type(prev: Coord, now: Coord, next: Coord) -> i8 {
     let prev_dij = now - prev;
     let next_dij = next - now;
+    // 1: ─
+    // 2: │
+    // 3: ┐
+    // 4: ┘
+    // 5: └
+    // 6: ┌
     match (prev_dij, next_dij) {
-        (Coord { i: 1, j: 0 }, Coord { i: 1, j: 0 }) => RailType::UpToDown,
-        (Coord { i: NEG, j: 0 }, Coord { i: NEG, j: 0 }) => RailType::UpToDown,
-        (Coord { i: 0, j: 1 }, Coord { i: 0, j: 1 }) => RailType::LeftToRight,
-        (Coord { i: 0, j: NEG }, Coord { i: 0, j: NEG }) => RailType::LeftToRight,
-        (Coord { i: 1, j: 0 }, Coord { i: 0, j: 1 }) => RailType::UpToRight,
-        (Coord { i: 1, j: 0 }, Coord { i: 0, j: NEG }) => RailType::LeftToUp,
-        (Coord { i: NEG, j: 0 }, Coord { i: 0, j: 1 }) => RailType::DownToRight,
-        (Coord { i: NEG, j: 0 }, Coord { i: 0, j: NEG }) => RailType::LeftToDown,
-        (Coord { i: 0, j: 1 }, Coord { i: 1, j: 0 }) => RailType::LeftToDown,
-        (Coord { i: 0, j: 1 }, Coord { i: NEG, j: 0 }) => RailType::LeftToUp,
-        (Coord { i: 0, j: NEG }, Coord { i: 1, j: 0 }) => RailType::DownToRight,
-        (Coord { i: 0, j: NEG }, Coord { i: NEG, j: 0 }) => RailType::UpToRight,
+        (Coord { i: 1, j: 0 }, Coord { i: 1, j: 0 }) => 2,
+        (Coord { i: NEG, j: 0 }, Coord { i: NEG, j: 0 }) => 2,
+        (Coord { i: 0, j: 1 }, Coord { i: 0, j: 1 }) => 1,
+        (Coord { i: 0, j: NEG }, Coord { i: 0, j: NEG }) => 1,
+        (Coord { i: 1, j: 0 }, Coord { i: 0, j: 1 }) => 5,
+        (Coord { i: 1, j: 0 }, Coord { i: 0, j: NEG }) => 4,
+        (Coord { i: NEG, j: 0 }, Coord { i: 0, j: 1 }) => 6,
+        (Coord { i: NEG, j: 0 }, Coord { i: 0, j: NEG }) => 3,
+        (Coord { i: 0, j: 1 }, Coord { i: 1, j: 0 }) => 3,
+        (Coord { i: 0, j: 1 }, Coord { i: NEG, j: 0 }) => 4,
+        (Coord { i: 0, j: NEG }, Coord { i: 1, j: 0 }) => 6,
+        (Coord { i: 0, j: NEG }, Coord { i: NEG, j: 0 }) => 5,
         _ => unreachable!(),
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Op {
-    pub t: Entity, // Entity::Emptyの場合はwait
+    pub t: i8,
     pub pos: Coord,
 }
 
 impl Op {
-    pub fn to_i8(&self) -> i8 {
-        match self.t {
-            Entity::Station => 0,
-            Entity::Rail(RailType::LeftToRight) => 1,
-            Entity::Rail(RailType::UpToDown) => 2,
-            Entity::Rail(RailType::LeftToDown) => 3,
-            Entity::Rail(RailType::LeftToUp) => 4,
-            Entity::Rail(RailType::UpToRight) => 5,
-            Entity::Rail(RailType::DownToRight) => 6,
-            Entity::Empty => -1,
-        }
-    }
     pub fn output(&self) {
-        let t = self.to_i8();
-        if t == -1 {
+        if self.t == -1 {
             println!("-1");
         } else {
-            println!("{} {} {}", t, self.pos.i, self.pos.j);
+            println!("{} {} {}", self.t, self.pos.i, self.pos.j);
         }
     }
 }
@@ -90,7 +69,7 @@ pub struct State {
     pub income: i64,
     pub score: i64,
     pub connected: Vec<bool>,
-    pub field: Vec<Vec<Entity>>,
+    pub field: Vec<Vec<i8>>,
     pub ops: Vec<Op>,
 }
 
@@ -102,7 +81,7 @@ impl State {
             income: 0,
             score: 0,
             connected: vec![false; input.M * 2],
-            field: vec![vec![Entity::Empty; input.N]; input.N],
+            field: vec![vec![EMPTY; input.N]; input.N],
             ops: vec![],
         }
     }
@@ -124,7 +103,7 @@ impl State {
                 let mut score = 0;
                 let coord = Coord::new(top + i, left + j);
                 // すでに線路や駅がある場合はスキップ
-                if self.field[coord.i][coord.j] != Entity::Empty {
+                if self.field[coord.i][coord.j] != EMPTY {
                     S[i][j] = -INF;
                     continue;
                 }
@@ -217,7 +196,7 @@ impl State {
         assert!(route.len() >= 2);
         let mut ops = vec![];
         ops.push(Op {
-            t: Entity::Station,
+            t: STATION,
             pos: route[0],
         });
 
@@ -226,13 +205,13 @@ impl State {
             let now = route[i];
             let next = route[i + 1];
             ops.push(Op {
-                t: Entity::Rail(to_rail_type(prev, now, next)),
+                t: to_rail_type(prev, now, next),
                 pos: route[i],
             });
         }
 
         ops.push(Op {
-            t: Entity::Station,
+            t: STATION,
             pos: route[route.len() - 1],
         });
 
@@ -249,7 +228,7 @@ impl State {
         let wait_num = calc_wait_num(dist, self.money, self.income);
         let mut ops = vec![
             Op {
-                t: Entity::Empty,
+                t: WAIT,
                 pos: Coord::new(!0, !0)
             };
             wait_num
@@ -260,13 +239,13 @@ impl State {
             let now = route[i];
             let next = route[i + 1];
             ops.push(Op {
-                t: Entity::Rail(to_rail_type(prev, now, next)),
+                t: to_rail_type(prev, now, next),
                 pos: route[i],
             });
         }
 
         ops.push(Op {
-            t: Entity::Station,
+            t: STATION,
             pos: to,
         });
 
@@ -278,7 +257,7 @@ impl State {
             const MAX_INITIAL_CAND_NUM: usize = 2000;
             let L = input.covers.len();
             let mut rough_cands = vec![];
-            for i in 0..L {
+            'a: for i in 0..L {
                 let (from, cover0) = &input.covers[i];
                 for j in i + 1..L {
                     let (to, cover1) = &input.covers[j];
@@ -319,6 +298,7 @@ impl State {
                     cands.push(self.to_initial_ops(&route));
                 }
             }
+            eprintln!("first cand elapsed: {:.3}", get_time());
         } else {
             const MAX_CAND_NUM: usize = 50;
             let L = input.covers.len();
@@ -328,7 +308,8 @@ impl State {
             for i in 0..input.N {
                 for j in 0..input.N {
                     match self.field[i][j] {
-                        Entity::Rail(_) => {
+                        // RAIL
+                        1..=6 => {
                             let to = Coord::new(i, j);
                             let cover = &input.cover_field[i][j];
                             // 資金が足りない場合は待機
@@ -372,7 +353,7 @@ impl State {
             // 線路を敷いて駅を建てる
             'a: for i in 0..input.N {
                 for j in 0..input.N {
-                    if self.field[i][j] != Entity::Station {
+                    if self.field[i][j] != STATION {
                         continue;
                     }
                     let from = Coord::new(i, j);
@@ -412,9 +393,9 @@ impl State {
                             let income_per_turn = income as f64 / (wait_num + dist) as f64;
                             rough_cands.push((income_per_turn, from, *to));
                         }
-                        if get_time() > input.TLE {
-                            break 'a;
-                        }
+                        // if get_time() > input.TLE {
+                        //     break 'a;
+                        // }
                     }
                 }
             }
@@ -435,7 +416,7 @@ impl State {
         for op in ops.iter() {
             // 建設フェーズ
             match op.t {
-                Entity::Station => {
+                STATION => {
                     new_state.field[op.pos.i][op.pos.j] = op.t;
                     new_state.money -= STATION_COST;
                     for &idx in input.cover_field[op.pos.i][op.pos.j].iter() {
@@ -460,13 +441,13 @@ impl State {
                         new_state.connected[idx] = true;
                     }
                 }
-                Entity::Rail(_) => {
+                // RAIL
+                1..=6 => {
                     new_state.field[op.pos.i][op.pos.j] = op.t;
                     new_state.money -= RAIL_COST;
                 }
-                Entity::Empty => {
-                    // wait
-                }
+                WAIT => {}
+                _ => unreachable!(),
             }
             assert!(new_state.money >= 0);
 
