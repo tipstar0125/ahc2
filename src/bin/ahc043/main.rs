@@ -5,8 +5,6 @@ use input::Input;
 
 use crate::{common::get_time, input::read_input};
 
-mod bfs;
-mod chokudai;
 mod chokudai_search;
 mod common;
 mod coord;
@@ -15,6 +13,7 @@ mod state;
 mod test;
 
 fn solve(input: &Input) {
+    eprintln!("L = {}", input.covers.len());
     let mut chokudai_search = chokudai_search::ChokudaiSearch::new(input, 1, 100);
     chokudai_search.shoot(input);
 
