@@ -1,6 +1,6 @@
 use proconio::input;
 
-use crate::{coord::Coord, hash::CalcHash};
+use crate::coord::{Coord, ADJ};
 
 pub fn read_input() -> Input {
     input! {
@@ -22,7 +22,28 @@ pub fn read_input() -> Input {
         home_workspace_field[iw][jw].push(idx + M);
     }
 
-    let calc_hash = CalcHash::new(N);
+    // 各マスからマンハッタン距離2以下のマスにある自宅と会社を列挙
+    // ただし、空の場合は除く
+    let mut covers = vec![];
+    let mut cover_field = vec![vec![vec![]; N]; N];
+
+    for i in 0..N {
+        for j in 0..N {
+            let pos = Coord::new(i, j);
+            let mut cover = vec![];
+
+            for &dij in ADJ.iter() {
+                let nxt = pos + dij;
+                if nxt.in_map(N) {
+                    cover.extend(home_workspace_field[nxt.i][nxt.j].iter().copied());
+                }
+            }
+            if !cover.is_empty() {
+                covers.push((pos, cover.clone()));
+                cover_field[i][j] = cover;
+            }
+        }
+    }
 
     eprintln!("M = {}", M);
     eprintln!("K = {}", K);
@@ -34,8 +55,9 @@ pub fn read_input() -> Input {
         T,
         home,
         workspace,
-        home_workspace_field,
-        calc_hash,
+        covers,
+        cover_field,
+        TLE: 2.9,
     }
 }
 
@@ -47,6 +69,7 @@ pub struct Input {
     pub T: usize,
     pub home: Vec<Coord>,
     pub workspace: Vec<Coord>,
-    pub home_workspace_field: Vec<Vec<Vec<usize>>>,
-    pub calc_hash: CalcHash,
+    pub covers: Vec<(Coord, Vec<usize>)>,
+    pub cover_field: Vec<Vec<Vec<usize>>>,
+    pub TLE: f64,
 }
