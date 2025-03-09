@@ -201,7 +201,7 @@ impl State {
         field[stations[from].pos.i][stations[from].pos.j] = Entity::Station;
         field[stations[to].pos.i][stations[to].pos.j] = Entity::Station;
 
-        let dist = calc_manhattan_dist(stations[from].pos, stations[to].pos);
+        let dist = calc_manhattan_dist(&stations[from].pos, &stations[to].pos);
         let mut income = 0;
         let mut connected = vec![false; input.M * 2];
         for idx in stations[from].home.iter().chain(stations[to].home.iter()) {
@@ -213,7 +213,7 @@ impl State {
             .chain(stations[to].workspace.iter())
         {
             if connected[*idx] {
-                income += calc_manhattan_dist(input.home[*idx], input.workspace[*idx]) as i64;
+                income += calc_manhattan_dist(&input.home[*idx], &input.workspace[*idx]) as i64;
             }
             connected[*idx + input.M] = true;
         }
@@ -320,14 +320,14 @@ impl State {
             for &idx in stations[to_idx].home.iter() {
                 if !next_state.connected[idx] && next_state.connected[idx + input.M] {
                     added_income +=
-                        calc_manhattan_dist(input.home[idx], input.workspace[idx]) as i64;
+                        calc_manhattan_dist(&input.home[idx], &input.workspace[idx]) as i64;
                 }
                 next_state.connected[idx] = true;
             }
             for &idx in stations[to_idx].workspace.iter() {
                 if next_state.connected[idx] && !next_state.connected[idx + input.M] {
                     added_income +=
-                        calc_manhattan_dist(input.home[idx], input.workspace[idx]) as i64;
+                        calc_manhattan_dist(&input.home[idx], &input.workspace[idx]) as i64;
                 }
                 next_state.connected[idx + input.M] = true;
             }
@@ -378,14 +378,14 @@ impl State {
                 for &idx in stations[to_idx].home.iter() {
                     if !next_state.connected[idx] && next_state.connected[idx + input.M] {
                         added_income +=
-                            calc_manhattan_dist(input.home[idx], input.workspace[idx]) as i64;
+                            calc_manhattan_dist(&input.home[idx], &input.workspace[idx]) as i64;
                     }
                     next_state.connected[idx] = true;
                 }
                 for &idx in stations[to_idx].workspace.iter() {
                     if next_state.connected[idx] && !next_state.connected[idx + input.M] {
                         added_income +=
-                            calc_manhattan_dist(input.home[idx], input.workspace[idx]) as i64;
+                            calc_manhattan_dist(&input.home[idx], &input.workspace[idx]) as i64;
                     }
                     next_state.connected[idx + input.M] = true;
                 }
@@ -437,7 +437,7 @@ pub fn make_initial_state(input: &Input, stations: &Vec<Station>) -> Vec<State> 
     let L = stations.len();
     for from in 0..L {
         for to in from + 1..L {
-            let dist = calc_manhattan_dist(stations[from].pos, stations[to].pos);
+            let dist = calc_manhattan_dist(&stations[from].pos, &stations[to].pos);
             let cost = STATION_COST * 2 + RAIL_COST * (dist as i64 - 1);
             if input.K < cost as usize {
                 continue;

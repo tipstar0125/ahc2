@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, collections::{BinaryHeap, VecDeque}, vec};
 
-use crate::{coord::calc_manhattan_dist, Coord, DIJ4};
+use crate::coord::{calc_manhattan_dist, Coord, DIJ4};
 
 pub const NOT_VISITED: usize = 1 << 60;
 pub const CANNOT_VISIT: usize = !0;
@@ -51,7 +51,7 @@ pub fn A_star(start: Coord, goal: Coord, dist: &mut Vec<Vec<usize>>) {
     let N = dist.len();
     let mut queue = BinaryHeap::new();
     dist[start.i][start.j] = 0;
-    queue.push((Reverse(calc_manhattan_dist(start, goal)), 0, start));
+    queue.push((Reverse(calc_manhattan_dist(&start, &goal)), 0, start));
     
     while let Some((_,d, pos)) = queue.pop() {
         if dist[pos.i][pos.j] < d {
@@ -65,7 +65,7 @@ pub fn A_star(start: Coord, goal: Coord, dist: &mut Vec<Vec<usize>>) {
             let next = pos + dij;
             if next.in_map(N) && dist[next.i][next.j] != CANNOT_VISIT && d+1 < dist[next.i][next.j] {
                 dist[next.i][next.j] = d+1;
-                queue.push((Reverse(d+1 + calc_manhattan_dist(next, goal)), d+1, next));
+                queue.push((Reverse(d+1 + calc_manhattan_dist(&next, &goal)), d+1, next));
             }
         }
     }

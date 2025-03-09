@@ -57,6 +57,7 @@ pub fn read_input() -> Input {
         workspace,
         covers,
         cover_field,
+        home_workspace_field,
         TLE: 2.9,
     }
 }
@@ -71,5 +72,6 @@ pub struct Input {
     pub workspace: Vec<Coord>,
     pub covers: Vec<(Coord, Vec<usize>)>,
     pub cover_field: Vec<Vec<Vec<usize>>>,
+    pub home_workspace_field: Vec<Vec<Vec<usize>>>,
     pub TLE: f64,
 }
