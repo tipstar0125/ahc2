@@ -1,6 +1,6 @@
 use crate::{
     common::get_time,
-    coord::{calc_manhattan_dist, Coord, ADJ, NEG},
+    coord::{calc_manhattan_dist, Coord, NEG},
     input::Input,
 };
 
@@ -100,49 +100,11 @@ impl State {
         let top = if from.i < to.i { from.i } else { to.i };
         for i in 0..=h {
             for j in 0..=w {
-                let mut score = 0;
-                let coord = Coord::new(top + i, left + j);
-                // すでに線路や駅がある場合はスキップ
-                if self.field[coord.i][coord.j] != EMPTY {
-                    S[i][j] = -INF;
-                    continue;
-                }
-                for &dij in ADJ.iter() {
-                    let nxt = coord + dij;
-                    if nxt.in_map(input.N) {
-                        for &new_idx in input.cover_field[nxt.i][nxt.j].iter() {
-                            // すでに繋がっている場合はスコアに影響しない
-                            if self.connected[new_idx] {
-                                continue;
-                            }
-                            let pair_idx = if new_idx < input.M {
-                                new_idx + input.M
-                            } else {
-                                new_idx - input.M
-                            };
-
-                            // それぞれの座標を取得
-                            let new_coord = if new_idx < input.M {
-                                input.workspace[new_idx]
-                            } else {
-                                input.home[new_idx - input.M]
-                            };
-                            let pair_coord = if pair_idx < input.M {
-                                input.workspace[pair_idx]
-                            } else {
-                                input.home[pair_idx - input.M]
-                            };
-
-                            // ペアが既に繋がっている場合は即時スコアに影響するので、繋がっていない場合のスコアを5倍にする
-                            if self.connected[pair_idx] {
-                                score += 5 * calc_manhattan_dist(&new_coord, &pair_coord) as i64;
-                            } else {
-                                score += calc_manhattan_dist(&new_coord, &pair_coord) as i64;
-                            }
-                        }
-                    }
-                }
-                S[i][j] = score;
+                S[i][j] = if self.field[i + top][j + left] != EMPTY {
+                    -INF
+                } else {
+                    input.cover_field[i + top][j + left].len() as i64
+                };
             }
         }
 
@@ -276,22 +238,24 @@ impl State {
                     }
 
                     let mut income = 0;
-                    for mut c0 in cover0 {
-                        for mut c1 in cover1 {
-                            if c0 > c1 {
-                                std::mem::swap(&mut c0, &mut c1);
-                            }
-                            // 対応する自宅と会社がある場合
-                            if *c0 + input.M == *c1 {
-                                let pos_home = input.home[*c0];
-                                let pos_workspace = input.workspace[*c1 - input.M];
-                                income += calc_manhattan_dist(&pos_home, &pos_workspace) as i64;
-                            }
+                    let mut connected = vec![false; input.M * 2];
+                    for &idx in cover0 {
+                        connected[idx] = true;
+                    }
+                    for &idx in cover1 {
+                        let pair_idx = (idx + input.M) % (input.M * 2);
+                        let (coord, pair_coord) = if idx < input.M {
+                            (input.home[idx % input.M], input.workspace[idx % input.M])
+                        } else {
+                            (input.workspace[idx % input.M], input.home[idx % input.M])
+                        };
+                        let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
+                        if !connected[idx] && connected[pair_idx] {
+                            income += dist;
                         }
                     }
+
                     if income > 0 {
-                        // let income_per_turn = income as f64 / dist as f64;
-                        // rough_cands.push((income_per_turn, from, to));
                         rough_cands.push((income, from, to));
                     }
                 }
@@ -328,23 +292,17 @@ impl State {
                             }
                             let mut income = 0;
                             for &idx in cover {
-                                let pair_idx = if idx < input.M {
-                                    idx + input.M
+                                let pair_idx = (idx + input.M) % (input.M * 2);
+                                let (coord, pair_coord) = if idx < input.M {
+                                    (input.home[idx % input.M], input.workspace[idx % input.M])
                                 } else {
-                                    idx - input.M
+                                    (input.workspace[idx % input.M], input.home[idx % input.M])
                                 };
+                                let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
                                 if !self.connected[idx] && self.connected[pair_idx] {
-                                    let coord = if idx < input.M {
-                                        input.home[idx]
-                                    } else {
-                                        input.workspace[idx - input.M]
-                                    };
-                                    let pair_coord = if pair_idx < input.M {
-                                        input.home[pair_idx]
-                                    } else {
-                                        input.workspace[pair_idx - input.M]
-                                    };
-                                    income += calc_manhattan_dist(&coord, &pair_coord) as i64;
+                                    income += 5 * dist;
+                                } else if !self.connected[idx] && !self.connected[pair_idx] {
+                                    income += dist;
                                 }
                             }
                             if income > 0 {
@@ -377,23 +335,17 @@ impl State {
 
                         let mut income = 0;
                         for &idx in cover {
-                            let pair_idx = if idx < input.M {
-                                idx + input.M
+                            let pair_idx = (idx + input.M) % (input.M * 2);
+                            let (coord, pair_coord) = if idx < input.M {
+                                (input.home[idx % input.M], input.workspace[idx % input.M])
                             } else {
-                                idx - input.M
+                                (input.workspace[idx % input.M], input.home[idx % input.M])
                             };
+                            let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
                             if !self.connected[idx] && self.connected[pair_idx] {
-                                let coord = if idx < input.M {
-                                    input.home[idx]
-                                } else {
-                                    input.workspace[idx - input.M]
-                                };
-                                let pair_coord = if pair_idx < input.M {
-                                    input.home[pair_idx]
-                                } else {
-                                    input.workspace[pair_idx - input.M]
-                                };
-                                income += calc_manhattan_dist(&coord, &pair_coord) as i64;
+                                income += 5 * dist;
+                            } else if !self.connected[idx] && !self.connected[pair_idx] {
+                                income += dist;
                             }
                         }
                         if income > 0 {

@@ -36,7 +36,7 @@ impl ChokudaiSearch {
                 return;
             }
             let state = self.beam[turn].pop().unwrap();
-            if state.turn > self.best_ops.len() && state.score <= self.best_score {
+            if state.turn > self.best_ops.len() && state.score < self.best_score {
                 continue;
             }
             if state.score > self.best_score {
@@ -50,8 +50,7 @@ impl ChokudaiSearch {
                     self.best_score = new_state.score;
                     self.best_ops = new_state.ops.clone();
                 }
-                if new_state.score <= state.score {}
-                if new_state.turn > self.best_ops.len() && new_state.score <= self.best_score {
+                if new_state.turn > self.best_ops.len() && new_state.score < self.best_score {
                     continue;
                 }
                 self.beam[new_state.turn].push(new_state);
@@ -62,7 +61,7 @@ impl ChokudaiSearch {
         'a: loop {
             self.beam_num += 1;
             for turn in 0..self.depth {
-                eprintln!("turn = {}", turn);
+                // eprintln!("turn = {}", turn);
                 self.beam[turn].sort_unstable_by_key(|state| -state.score);
                 self.beam[turn].truncate(self.max_size);
                 self.beam[turn].reverse();
