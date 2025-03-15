@@ -280,7 +280,6 @@ impl State {
                         // RAIL
                         1..=6 => {
                             let to = Coord::new(i, j);
-                            let cover = &input.cover_field[i][j];
                             // 資金が足りない場合は待機
                             let dist = 1;
                             let wait_num = calc_wait_num(dist, self.money, self.income);
@@ -289,12 +288,15 @@ impl State {
                                 continue;
                             }
                             let mut income = 0;
-                            for &idx in cover {
+                            for &idx in input.cover_field[i][j].iter() {
+                                if self.connected[idx] {
+                                    continue;
+                                }
                                 let pair_idx = (idx + input.M) % (input.M * 2);
                                 let dist = input.pair_dist[idx % input.M];
-                                if !self.connected[idx] && self.connected[pair_idx] {
+                                if self.connected[pair_idx] {
                                     income += 5 * dist;
-                                } else if !self.connected[idx] && !self.connected[pair_idx] {
+                                } else {
                                     income += dist;
                                 }
                             }
@@ -328,11 +330,14 @@ impl State {
 
                         let mut income = 0;
                         for &idx in cover {
+                            if self.connected[idx] {
+                                continue;
+                            }
                             let pair_idx = (idx + input.M) % (input.M * 2);
                             let dist = input.pair_dist[idx % input.M];
-                            if !self.connected[idx] && self.connected[pair_idx] {
+                            if self.connected[pair_idx] {
                                 income += 5 * dist;
-                            } else if !self.connected[idx] && !self.connected[pair_idx] {
+                            } else {
                                 income += dist;
                             }
                         }
