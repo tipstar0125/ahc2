@@ -1,6 +1,6 @@
 use proconio::input;
 
-use crate::coord::{Coord, ADJ};
+use crate::coord::{calc_manhattan_dist, Coord, ADJ};
 
 pub fn read_input() -> Input {
     input! {
@@ -13,13 +13,18 @@ pub fn read_input() -> Input {
 
     let mut home = vec![];
     let mut workspace = vec![];
+    let mut pair_dist = vec![];
     let mut home_workspace_field = vec![vec![vec![]; N]; N];
 
     for (idx, &(ih, jh, iw, jw)) in pos.iter().enumerate() {
-        home.push(Coord::new(ih, jh));
-        workspace.push(Coord::new(iw, jw));
+        let home_coord = Coord::new(ih, jh);
+        let workspace_coord = Coord::new(iw, jw);
+        let dist = calc_manhattan_dist(&home_coord, &workspace_coord);
+        home.push(home_coord);
+        workspace.push(workspace_coord);
         home_workspace_field[ih][jh].push(idx);
         home_workspace_field[iw][jw].push(idx + M);
+        pair_dist.push(dist);
     }
 
     // 各マスからマンハッタン距離2以下のマスにある自宅と会社を列挙
@@ -57,6 +62,7 @@ pub fn read_input() -> Input {
         workspace,
         covers,
         cover_field,
+        pair_dist,
         home_workspace_field,
         TLE: 2.9,
     }
@@ -72,6 +78,7 @@ pub struct Input {
     pub workspace: Vec<Coord>,
     pub covers: Vec<(Coord, Vec<usize>)>,
     pub cover_field: Vec<Vec<Vec<usize>>>,
+    pub pair_dist: Vec<usize>,
     pub home_workspace_field: Vec<Vec<Vec<usize>>>,
     pub TLE: f64,
 }

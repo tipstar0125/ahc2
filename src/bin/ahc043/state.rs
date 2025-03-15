@@ -244,12 +244,7 @@ impl State {
                     }
                     for &idx in cover1 {
                         let pair_idx = (idx + input.M) % (input.M * 2);
-                        let (coord, pair_coord) = if idx < input.M {
-                            (input.home[idx % input.M], input.workspace[idx % input.M])
-                        } else {
-                            (input.workspace[idx % input.M], input.home[idx % input.M])
-                        };
-                        let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
+                        let dist = input.pair_dist[idx % input.M];
                         if !connected[idx] && connected[pair_idx] {
                             income += dist;
                         }
@@ -293,12 +288,7 @@ impl State {
                             let mut income = 0;
                             for &idx in cover {
                                 let pair_idx = (idx + input.M) % (input.M * 2);
-                                let (coord, pair_coord) = if idx < input.M {
-                                    (input.home[idx % input.M], input.workspace[idx % input.M])
-                                } else {
-                                    (input.workspace[idx % input.M], input.home[idx % input.M])
-                                };
-                                let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
+                                let dist = input.pair_dist[idx % input.M];
                                 if !self.connected[idx] && self.connected[pair_idx] {
                                     income += 5 * dist;
                                 } else if !self.connected[idx] && !self.connected[pair_idx] {
@@ -336,12 +326,7 @@ impl State {
                         let mut income = 0;
                         for &idx in cover {
                             let pair_idx = (idx + input.M) % (input.M * 2);
-                            let (coord, pair_coord) = if idx < input.M {
-                                (input.home[idx % input.M], input.workspace[idx % input.M])
-                            } else {
-                                (input.workspace[idx % input.M], input.home[idx % input.M])
-                            };
-                            let dist = calc_manhattan_dist(&coord, &pair_coord) as i64;
+                            let dist = input.pair_dist[idx % input.M];
                             if !self.connected[idx] && self.connected[pair_idx] {
                                 income += 5 * dist;
                             } else if !self.connected[idx] && !self.connected[pair_idx] {
