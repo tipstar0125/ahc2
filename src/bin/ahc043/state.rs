@@ -219,7 +219,10 @@ impl State {
             const MAX_INITIAL_CAND_NUM: usize = 2000;
             const MIN_NODE_NUM: usize = 2;
             let L = input.covers.len();
+            let max_dist = (self.money - STATION_COST * 2) / RAIL_COST + 1;
             let mut rough_cands = vec![];
+            let mut connected = vec![0; input.M * 2];
+            let mut connected_cnt = 0;
             for i in 0..L {
                 let (from, cover0) = &input.covers[i];
                 if cover0.len() < MIN_NODE_NUM {
@@ -231,21 +234,21 @@ impl State {
                         continue;
                     }
 
-                    // 資金が足りない場合はスキップ
                     let dist = calc_manhattan_dist(from, to) as i64;
-                    if STATION_COST * 2 + RAIL_COST * (dist - 1) > self.money {
+                    // 資金が足りない場合はスキップ
+                    if dist > max_dist {
                         continue;
                     }
 
                     let mut income = 0;
-                    let mut connected = vec![false; input.M * 2];
+                    connected_cnt += 1;
                     for &idx in cover0 {
-                        connected[idx] = true;
+                        connected[idx] = connected_cnt;
                     }
                     for &idx in cover1 {
                         let pair_idx = (idx + input.M) % (input.M * 2);
                         let dist = input.pair_dist[idx % input.M];
-                        if !connected[idx] && connected[pair_idx] {
+                        if connected[pair_idx] == connected_cnt {
                             income += dist;
                         }
                     }
