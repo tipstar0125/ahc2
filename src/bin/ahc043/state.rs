@@ -311,41 +311,49 @@ impl State {
             }
 
             // 線路を敷いて駅を建てる
-            for i in 0..input.N {
-                for j in 0..input.N {
-                    if self.field[i][j] != STATION {
-                        continue;
-                    }
-                    let from = Coord::new(i, j);
-                    for k in 0..L {
-                        let (to, cover) = &input.covers[k];
-
-                        // 資金が足りない場合は待機
-                        let dist = calc_manhattan_dist(&from, to);
-                        let wait_num = calc_wait_num(dist, self.money, self.income);
-                        // 最大ターン数を超える場合はスキップ
-                        if self.turn + wait_num + dist > input.T {
+            for k in 0..L {
+                let (to, cover) = &input.covers[k];
+                if self.field[to.i][to.j] != EMPTY {
+                    continue;
+                }
+                let mut best_from = Coord::new(!0, !0);
+                let mut best_dist = INF as usize;
+                for i in 0..input.N {
+                    for j in 0..input.N {
+                        if self.field[i][j] != STATION {
                             continue;
                         }
-
-                        let mut income = 0;
-                        for &idx in cover {
-                            if self.connected[idx] {
-                                continue;
-                            }
-                            let pair_idx = (idx + input.M) % (input.M * 2);
-                            let dist = input.pair_dist[idx % input.M];
-                            if self.connected[pair_idx] {
-                                income += 5 * dist;
-                            } else {
-                                income += dist;
-                            }
-                        }
-                        if income > 0 {
-                            let income_per_turn = income as f64 / (wait_num + dist) as f64;
-                            rough_cands.push((income_per_turn, from, *to));
+                        let from = Coord::new(i, j);
+                        let dist = calc_manhattan_dist(&from, to);
+                        if dist < best_dist {
+                            best_dist = dist;
+                            best_from = from;
                         }
                     }
+                }
+                // 資金が足りない場合は待機
+                let wait_num = calc_wait_num(best_dist, self.money, self.income);
+                // 最大ターン数を超える場合はスキップ
+                if self.turn + wait_num + best_dist > input.T {
+                    continue;
+                }
+
+                let mut income = 0;
+                for &idx in cover {
+                    if self.connected[idx] {
+                        continue;
+                    }
+                    let pair_idx = (idx + input.M) % (input.M * 2);
+                    let dist = input.pair_dist[idx % input.M];
+                    if self.connected[pair_idx] {
+                        income += 5 * dist;
+                    } else {
+                        income += dist;
+                    }
+                }
+                if income > 0 {
+                    let income_per_turn = income as f64 / (wait_num + best_dist) as f64;
+                    rough_cands.push((income_per_turn, best_from, *to));
                 }
             }
             rough_cands.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
