@@ -103,7 +103,7 @@ impl State {
                 S[i][j] = if self.field[i + top][j + left] != EMPTY {
                     -INF
                 } else {
-                    input.cover_field[i + top][j + left].len() as i64
+                    input.cover_field[i + top][j + left].1.len() as i64
                 };
             }
         }
@@ -348,7 +348,7 @@ impl State {
                 STATION => {
                     new_state.field[op.pos.i][op.pos.j] = op.t;
                     new_state.money -= STATION_COST;
-                    for &idx in input.cover_field[op.pos.i][op.pos.j].iter() {
+                    for &idx in input.cover_field[op.pos.i][op.pos.j].1.iter() {
                         let pair_idx = if idx < input.M {
                             idx + input.M
                         } else {

@@ -30,7 +30,7 @@ pub fn read_input() -> Input {
     // 各マスからマンハッタン距離2以下のマスにある自宅と会社を列挙
     // ただし、空の場合は除く
     let mut covers = vec![];
-    let mut cover_field = vec![vec![vec![]; N]; N];
+    let mut cover_field = vec![vec![(!0, vec![]); N]; N];
 
     for i in 0..N {
         for j in 0..N {
@@ -44,8 +44,8 @@ pub fn read_input() -> Input {
                 }
             }
             if !cover.is_empty() {
-                covers.push((pos, cover.clone()));
-                cover_field[i][j] = cover;
+                cover_field[i][j] = (covers.len(), cover.clone());
+                covers.push((pos, cover));
             }
         }
     }
@@ -76,7 +76,7 @@ pub struct Input {
     pub home: Vec<Coord>,
     pub workspace: Vec<Coord>,
     pub covers: Vec<(Coord, Vec<usize>)>,
-    pub cover_field: Vec<Vec<Vec<usize>>>,
+    pub cover_field: Vec<Vec<(usize, Vec<usize>)>>,
     pub pair_dist: Vec<usize>,
     pub TLE: f64,
 }
