@@ -53,6 +53,12 @@ impl Op {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Cand {
+    pub score: i64,
+    pub ops: Vec<Op>,
+}
+
 pub fn calc_wait_num(dist: usize, money: i64, income: i64) -> usize {
     let cost = STATION_COST + RAIL_COST * (dist as i64 - 1);
     if cost <= money {
@@ -156,13 +162,15 @@ impl State {
         route.reverse();
         route
     }
-    pub fn to_initial_ops(&self, route: &Vec<Coord>) -> Vec<Op> {
+    pub fn to_initial_ops(&self, route: &Vec<Coord>, income: i64, input: &Input) -> Cand {
         assert!(route.len() >= 2);
+        let mut score = self.money;
         let mut ops = vec![];
         ops.push(Op {
             t: STATION,
             pos: route[0],
         });
+        score -= STATION_COST;
 
         for i in 1..route.len() - 1 {
             let prev = route[i - 1];
@@ -172,16 +180,21 @@ impl State {
                 t: to_rail_type(prev, now, next),
                 pos: route[i],
             });
+            score -= RAIL_COST;
         }
 
         ops.push(Op {
             t: STATION,
             pos: route[route.len() - 1],
         });
+        score -= STATION_COST;
+        score += income * (input.T as i64 - route.len() as i64 + 1);
 
-        ops
+        Cand { score, ops }
     }
-    pub fn to_ops(&self, route: &Vec<Coord>) -> Vec<Op> {
+    pub fn to_ops(&self, route: &Vec<Coord>, income: i64, input: &Input) -> Cand {
+        let mut score = self.money;
+        let mut turn = self.turn;
         let from = route[0];
         let to = route[route.len() - 1];
         let dist = if from == Coord::new(!0, !0) {
@@ -197,6 +210,8 @@ impl State {
             };
             wait_num
         ];
+        score += self.income * wait_num as i64;
+        turn += wait_num;
 
         for i in 1..route.len() - 1 {
             let prev = route[i - 1];
@@ -206,16 +221,21 @@ impl State {
                 t: to_rail_type(prev, now, next),
                 pos: route[i],
             });
+            score -= RAIL_COST;
+            score += self.income;
+            turn += 1;
         }
 
         ops.push(Op {
             t: STATION,
             pos: to,
         });
+        score -= STATION_COST;
+        score += income * (input.T as i64 - turn as i64);
 
-        ops
+        Cand { score, ops }
     }
-    pub fn cand(&self, input: &Input) -> Vec<Vec<Op>> {
+    pub fn cand(&self, input: &Input) -> Vec<Cand> {
         let mut cands = vec![];
         if self.turn == 0 {
             const MAX_INITIAL_CAND_NUM: usize = 2000;
@@ -251,7 +271,7 @@ impl State {
                         let pair_idx = (idx + input.M) % (input.M * 2);
                         let dist = input.pair_dist[idx % input.M];
                         if connected[pair_idx] == connected_cnt {
-                            income += dist;
+                            income += dist as i64;
                         }
                     }
 
@@ -263,10 +283,10 @@ impl State {
             rough_cands.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
             rough_cands.truncate(MAX_INITIAL_CAND_NUM);
 
-            for (_, from, to) in rough_cands {
+            for (income, from, to) in rough_cands {
                 let route = self.make_route(from, to, input);
                 if !route.is_empty() {
-                    cands.push(self.to_initial_ops(&route));
+                    cands.push(self.to_initial_ops(&route, income, input));
                 }
             }
             eprintln!("first cand elapsed: {:.3}", get_time());
@@ -278,7 +298,8 @@ impl State {
                 if self.field[to.i][to.j] == STATION {
                     continue;
                 }
-                let mut income = 0;
+                let mut income = self.income;
+                let mut eval_score = 0;
                 for &idx in cover.iter() {
                     if self.connected[idx] {
                         continue;
@@ -286,20 +307,21 @@ impl State {
                     let pair_idx = (idx + input.M) % (input.M * 2);
                     let dist = input.pair_dist[idx % input.M];
                     if self.connected[pair_idx] {
-                        income += 5 * dist;
+                        eval_score += 5 * dist;
+                        income += dist as i64;
                     } else {
-                        income += dist;
+                        eval_score += dist;
                     }
                 }
-                if income > 0 {
-                    rough_cands.push((income, to));
+                if eval_score > 0 {
+                    rough_cands.push((eval_score, income, to));
                 }
             }
 
             rough_cands.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
             rough_cands.truncate(MAX_CAND_NUM);
 
-            for (_, to) in rough_cands {
+            for (_, income, to) in rough_cands {
                 let from = {
                     if self.field[to.i][to.j] != EMPTY {
                         Coord::new(!0, !0)
@@ -317,21 +339,10 @@ impl State {
                         best_from
                     }
                 };
-                let dist = if from == Coord::new(!0, !0) {
-                    1 // 線路上に駅を建てる場合
-                } else {
-                    calc_manhattan_dist(&from, &to)
-                };
-                // 資金が足りない場合は待機
-                let wait_num = calc_wait_num(dist, self.money, self.income);
-                // 最大ターン数を超える場合はスキップ
-                if self.turn + wait_num + dist > input.T {
-                    continue;
-                }
 
                 let route = self.make_route(&from, &to, input);
                 if !route.is_empty() {
-                    cands.push(self.to_ops(&route));
+                    cands.push(self.to_ops(&route, income, input));
                 }
             }
         }

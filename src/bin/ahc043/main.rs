@@ -14,7 +14,7 @@ mod test;
 
 fn solve(input: &Input) {
     eprintln!("L = {}", input.covers.len());
-    let mut chokudai_search = chokudai_search::ChokudaiSearch::new(input, 1, 100);
+    let mut chokudai_search = chokudai_search::ChokudaiSearch::new(input, 1, 10);
     chokudai_search.shoot(input);
 
     let wait_num = input.T - chokudai_search.best.ops.len();

@@ -1,15 +1,8 @@
 use crate::{
     common::get_time,
     input::Input,
-    state::{Op, State},
+    state::{Cand, State},
 };
-
-#[derive(Debug, Default)]
-pub struct Best {
-    pub score: i64,
-    pub ops: Vec<Op>,
-    pub station_num: usize,
-}
 
 pub struct ChokudaiSearch {
     pub depth: usize,
@@ -17,7 +10,7 @@ pub struct ChokudaiSearch {
     pub max_size: usize,
     pub beam: Vec<Vec<State>>,
     pub beam_num: usize,
-    pub best: Best,
+    pub best: Cand,
 }
 
 impl ChokudaiSearch {
@@ -32,7 +25,7 @@ impl ChokudaiSearch {
             max_size,
             beam,
             beam_num: 0,
-            best: Best::default(),
+            best: Cand::default(),
         }
     }
     pub fn apply_cand(&mut self, turn: usize, input: &Input) {
@@ -41,24 +34,15 @@ impl ChokudaiSearch {
                 return;
             }
             let state = self.beam[turn].pop().unwrap();
-            if state.turn > self.best.ops.len() && state.score < self.best.score {
-                continue;
-            }
-            if state.score > self.best.score {
-                self.best.score = state.score;
-                self.best.ops = state.ops.clone();
-                self.best.station_num = state.stations.len();
-            }
             let cands = state.cand(input);
             for c in cands {
-                let new_state = state.apply(c, input);
+                if state.turn + c.ops.len() > self.best.ops.len() && c.score < self.best.score {
+                    continue;
+                }
+                let new_state = state.apply(c.ops, input);
                 if new_state.score > self.best.score {
                     self.best.score = new_state.score;
                     self.best.ops = new_state.ops.clone();
-                    self.best.station_num = new_state.stations.len();
-                }
-                if new_state.turn > self.best.ops.len() && new_state.score < self.best.score {
-                    continue;
                 }
                 self.beam[new_state.turn].push(new_state);
             }
