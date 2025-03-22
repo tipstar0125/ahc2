@@ -203,6 +203,7 @@ impl State {
             calc_manhattan_dist(&from, &to)
         };
         let wait_num = calc_wait_num(dist, self.money, self.income);
+        assert!(self.turn + wait_num + route.len() - 1 <= input.T);
         let mut ops = vec![
             Op {
                 t: WAIT,
