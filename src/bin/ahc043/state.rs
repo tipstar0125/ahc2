@@ -70,6 +70,7 @@ pub struct State {
     pub score: i64,
     pub connected: Vec<bool>,
     pub field: Vec<Vec<i8>>,
+    pub stations: Vec<usize>,
     pub ops: Vec<Op>,
 }
 
@@ -82,6 +83,7 @@ impl State {
             score: 0,
             connected: vec![false; input.M * 2],
             field: vec![vec![EMPTY; input.N]; input.N],
+            stations: vec![],
             ops: vec![],
         }
     }
@@ -304,17 +306,12 @@ impl State {
                     } else {
                         let mut best_from = Coord::new(!0, !0);
                         let mut best_dist = INF as usize;
-                        for i in 0..input.N {
-                            for j in 0..input.N {
-                                if self.field[i][j] != STATION {
-                                    continue;
-                                }
-                                let from = Coord::new(i, j);
-                                let dist = calc_manhattan_dist(&from, &to);
-                                if dist < best_dist {
-                                    best_dist = dist;
-                                    best_from = from;
-                                }
+                        for idx in self.stations.iter() {
+                            let from = input.covers[*idx].0;
+                            let dist = calc_manhattan_dist(&from, &to);
+                            if dist < best_dist {
+                                best_dist = dist;
+                                best_from = from;
                             }
                         }
                         best_from
@@ -346,6 +343,8 @@ impl State {
             // 建設フェーズ
             match op.t {
                 STATION => {
+                    let station_idx = input.cover_field[op.pos.i][op.pos.j].0;
+                    new_state.stations.push(station_idx);
                     new_state.field[op.pos.i][op.pos.j] = op.t;
                     new_state.money -= STATION_COST;
                     for &idx in input.cover_field[op.pos.i][op.pos.j].1.iter() {

@@ -17,8 +17,8 @@ fn solve(input: &Input) {
     let mut chokudai_search = chokudai_search::ChokudaiSearch::new(input, 1, 100);
     chokudai_search.shoot(input);
 
-    let wait_num = input.T - chokudai_search.best_ops.len();
-    for op in chokudai_search.best_ops {
+    let wait_num = input.T - chokudai_search.best.ops.len();
+    for op in chokudai_search.best.ops.iter() {
         op.output();
     }
     for _ in 0..wait_num {
