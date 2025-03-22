@@ -63,7 +63,6 @@ pub fn read_input() -> Input {
         covers,
         cover_field,
         pair_dist,
-        home_workspace_field,
         TLE: 2.7,
     }
 }
@@ -79,6 +78,5 @@ pub struct Input {
     pub covers: Vec<(Coord, Vec<usize>)>,
     pub cover_field: Vec<Vec<Vec<usize>>>,
     pub pair_dist: Vec<usize>,
-    pub home_workspace_field: Vec<Vec<Vec<usize>>>,
     pub TLE: f64,
 }
