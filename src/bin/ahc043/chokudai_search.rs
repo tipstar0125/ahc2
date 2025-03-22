@@ -61,7 +61,6 @@ impl ChokudaiSearch {
         'a: loop {
             self.beam_num += 1;
             for turn in 0..self.depth {
-                // eprintln!("turn = {}", turn);
                 self.beam[turn].sort_unstable_by_key(|state| -state.score);
                 self.beam[turn].truncate(self.max_size);
                 self.beam[turn].reverse();

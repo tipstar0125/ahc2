@@ -64,7 +64,7 @@ pub fn read_input() -> Input {
         cover_field,
         pair_dist,
         home_workspace_field,
-        TLE: 2.9,
+        TLE: 2.7,
     }
 }
 
