@@ -1,20 +1,10 @@
 pub fn get_time() -> f64 {
-    static mut STIME: f64 = -1.0;
-    let t = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap();
-    let ms = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
+    static mut STIME: Option<std::time::Instant> = None;
     unsafe {
-        if STIME < 0.0 {
-            STIME = ms;
+        let now = std::time::Instant::now();
+        if STIME.is_none() {
+            STIME = Some(now);
         }
-        #[cfg(feature = "local")]
-        {
-            (ms - STIME) * 1.0
-        }
-        #[cfg(not(feature = "local"))]
-        {
-            ms - STIME
-        }
+        now.duration_since(STIME.unwrap()).as_secs_f64()
     }
 }
