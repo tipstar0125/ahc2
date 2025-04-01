@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use proconio::input_interactive;
-use rand::{seq::SliceRandom, Rng};
+use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
 use crate::{
@@ -28,7 +28,7 @@ impl Estimator {
         let mut edges = vec![];
         let mut used_cnt = vec![0; input.N];
         let mut count_included = vec![vec![0; input.N]; input.N];
-        let mut count_appear = vec![vec![1; input.N]; input.N];
+        let mut count_appear = vec![vec![0; input.N]; input.N];
 
         // クエリ対象の点をまんべんなく選択し、最小全域木の辺となる頂点間の長さは
         // 比較的距離が短いと予想される
@@ -50,8 +50,6 @@ impl Estimator {
                 candidates.push((dist, i));
             }
             candidates.sort();
-            candidates.truncate(input.L * 2);
-            candidates.shuffle(&mut rng);
             candidates.truncate(input.L - 1);
             candidates.push((0, base_idx));
             let mut selected = candidates.iter().map(|(_, i)| *i).collect::<Vec<_>>();
@@ -100,7 +98,11 @@ impl Estimator {
                     continue;
                 }
                 let coord_j = xy_center[j];
-                let score = count_included[i][j] as f64 / count_appear[i][j] as f64;
+                let score = if count_appear[i][j] == 0 {
+                    0.0
+                } else {
+                    count_included[i][j] as f64 / count_appear[i][j] as f64
+                };
                 let d = (calc_dist2(coord_i, coord_j) as f64).sqrt();
                 dist[i][j] = d - score * 3000.0;
             }
