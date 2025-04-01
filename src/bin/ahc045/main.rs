@@ -2,117 +2,35 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
+use construct::Forest;
+use estimator::Estimator;
 use input::Input;
-use itertools::Itertools;
-use rand::Rng;
-use rand_pcg::Pcg64Mcg;
 
 mod common;
+mod construct;
 mod coord;
+mod estimator;
 mod input;
-mod state;
 mod test;
 
-const TLE: f64 = 1.9;
+/*
+<問題概要>
+- 座標平面上にN個の点がある
+- 各点の座標の真値は与えられず、存在する範囲が与えられる
+- 座標の真値は0-10000の範囲である
+- これらの点をM個のグループに分ける
+- 各グループはちょうどG[i]個の点から構成される必要がある
+- 以下のクエリを最大でQ回実行できる
+    - 点群の中から最大でLの点を選択しクエリを投げる
+    - クエリの結果、選択した点群の座標の真値をもとに最小全域木を構成した場合の隣接リストが返ってくる
+- 各グループを木構造として結合した場合の辺の長さの総和を最小化する
+*/
+
+const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) {
-    let mut G_with_idx = input
-        .G
-        .iter()
-        .cloned()
-        .enumerate()
-        .map(|(i, g)| (g, i))
-        .collect::<Vec<(usize, usize)>>();
-    G_with_idx.sort();
-    G_with_idx.reverse();
-
-    let mut dist_idx = vec![vec![]; input.N];
-
-    for i in 0..input.N {
-        for j in 0..input.N {
-            if i == j {
-                continue;
-            }
-            dist_idx[i].push((input.dist[i][j], j));
-        }
-        dist_idx[i].sort();
-    }
-
-    let mut rng = Pcg64Mcg::new(10);
-    let mut best_score = usize::MAX;
-    let mut best_ans = vec![];
-    let mut iter = 0;
-
-    while get_time() < TLE {
-        iter += 1;
-        let mut used = vec![false; input.N];
-        let mut proceed_idx = vec![0; input.N];
-        let mut ans = vec![vec![]; input.M];
-        let mut score = 0;
-
-        for &(num, g_idx) in G_with_idx.iter() {
-            let mut node_idx = rng.gen_range(0..input.N);
-            while used[node_idx] {
-                node_idx = rng.gen_range(0..input.N);
-            }
-            used[node_idx] = true;
-            let mut nodes = vec![node_idx];
-            ans[g_idx].push((node_idx, !0));
-
-            while nodes.len() < num {
-                let mut target_node = !0;
-                let mut next_node = !0;
-                let mut min_dist = usize::MAX;
-                for &node_idx in nodes.iter() {
-                    loop {
-                        let (dist, next_idx) = dist_idx[node_idx][proceed_idx[node_idx]];
-                        if used[next_idx] {
-                            proceed_idx[node_idx] += 1;
-                            continue;
-                        }
-                        if dist < min_dist {
-                            min_dist = dist;
-                            next_node = next_idx;
-                            target_node = node_idx;
-                        }
-                        break;
-                    }
-                }
-                assert!(target_node != !0);
-                assert!(next_node != !0);
-                assert!(min_dist != usize::MAX);
-                used[next_node] = true;
-                nodes.push(next_node);
-                ans[g_idx].push((target_node, next_node));
-                score += min_dist;
-            }
-        }
-        if score < best_score {
-            best_score = score;
-            best_ans = ans;
-        }
-    }
-    println!("!");
-    for row in best_ans {
-        assert!(row.len() > 0);
-        if row.len() == 1 {
-            println!("{}", row[0].0);
-        } else {
-            let mut nodes = vec![];
-            for (a, b) in row.iter().skip(1) {
-                nodes.push(a);
-                nodes.push(b);
-            }
-            nodes.sort();
-            nodes.dedup();
-            println!("{}", nodes.iter().join(" "));
-            for (a, b) in row.iter().skip(1) {
-                println!("{} {}", a, b);
-            }
-        }
-    }
-    eprintln!("iter = {}", iter);
-    eprintln!("Score = {}", best_score);
+    let estimator = Estimator::new(input);
+    Forest::solve(input, &estimator.xy, TLE);
 }
 
 fn main() {
