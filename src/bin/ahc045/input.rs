@@ -15,6 +15,11 @@ pub fn read_input() -> Input {
     eprintln!("L = {}", L);
     eprintln!("W = {}", W);
 
+    #[cfg(feature = "local")]
+    input_interactive! {
+        xy: [(usize, usize); N],
+    }
+
     Input {
         N,
         M,

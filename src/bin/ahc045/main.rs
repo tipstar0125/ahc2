@@ -30,7 +30,7 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) {
     let estimator = Estimator::new(input);
-    Forest::solve(input, &estimator.xy, TLE);
+    Forest::solve(input, &estimator.dist, TLE);
 }
 
 fn main() {

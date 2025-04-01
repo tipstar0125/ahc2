@@ -2,27 +2,16 @@ use itertools::Itertools;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{
-    common::get_time,
-    coord::{calc_dist2, Coord},
-    input::Input,
-};
+use crate::{common::get_time, input::Input};
 
 pub struct Forest {}
 
 impl Forest {
-    pub fn solve(input: &Input, xy: &Vec<Coord>, TLE: f64) {
+    pub fn solve(input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
         // グループに含まれるべき点の個数で降順ソートし、大きいものから順にグループを構成する
         // グループを構成する最初の頂点は、使用していない頂点の中からランダムに選択する
         // 次の頂点は、使用していない頂点の中から、最も近い頂点を選択し、グループに含め木構造を構築する
         // これらの構築を時間制限まえ繰り返し実行し、木の辺の長さの総和が最小のもを出力する
-
-        let mut dist = vec![vec![0; input.N]; input.N];
-        for i in 0..input.N {
-            for j in 0..input.N {
-                dist[i][j] = calc_dist2(xy[i], xy[j]);
-            }
-        }
 
         let mut G_with_idx = input
             .G
@@ -43,11 +32,11 @@ impl Forest {
                 }
                 dist_idx[i].push((dist[i][j], j));
             }
-            dist_idx[i].sort();
+            dist_idx[i].sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         }
 
         let mut rng = Pcg64Mcg::new(10);
-        let mut best_score = usize::MAX;
+        let mut best_score = 1e18;
         let mut best_ans = vec![];
         let mut iter = 0;
 
@@ -56,7 +45,7 @@ impl Forest {
             let mut used = vec![false; input.N];
             let mut proceed_idx = vec![0; input.N];
             let mut ans = vec![vec![]; input.M];
-            let mut score = 0;
+            let mut score = 0.0;
 
             for &(num, g_idx) in G_with_idx.iter() {
                 let mut node_idx = rng.gen_range(0..input.N);
@@ -70,7 +59,7 @@ impl Forest {
                 while nodes.len() < num {
                     let mut target_node = !0;
                     let mut next_node = !0;
-                    let mut min_dist = usize::MAX;
+                    let mut min_dist = 1e18;
                     for &node_idx in nodes.iter() {
                         loop {
                             let (dist, next_idx) = dist_idx[node_idx][proceed_idx[node_idx]];
@@ -88,7 +77,7 @@ impl Forest {
                     }
                     assert!(target_node != !0);
                     assert!(next_node != !0);
-                    assert!(min_dist != usize::MAX);
+                    assert!(min_dist != 1e18);
                     used[next_node] = true;
                     nodes.push(next_node);
                     ans[g_idx].push((target_node, next_node));
@@ -120,6 +109,6 @@ impl Forest {
             }
         }
         eprintln!("iter = {}", iter);
-        eprintln!("Score = {}", best_score);
+        eprintln!("Score = {}", best_score as usize);
     }
 }
