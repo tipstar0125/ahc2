@@ -916,6 +916,9 @@ pub fn exec(p: &mut std::process::Child, local: bool) -> Result<i64, String> {
             input.range[i].0, input.range[i].1, input.range[i].2, input.range[i].3
         );
     }
+    for i in 0..input.N {
+        writeln!(stdin, "{} {}", input.xy[i].0, input.xy[i].1);
+    }
     let _ = stdin.flush();
     //真の座標についてユークリッド距離行列を作成する
     let dist = build_dist_matrix(&input);
