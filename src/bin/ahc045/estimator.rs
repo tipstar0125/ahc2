@@ -101,12 +101,8 @@ impl Estimator {
                 }
                 let coord_j = xy_center[j];
                 let score = count_included[i][j] as f64 / count_appear[i][j] as f64;
-                dist[i][j] = 1.0 / (1.0 + score);
-                let d = calc_dist2(coord_i, coord_j);
-                // 1回も選ばれない辺は1.0となるが、この場合は、点の座標が座標範囲の中心にあると仮定した場合の長さに置換する
-                if dist[i][j] >= 1.0 {
-                    dist[i][j] = d as f64;
-                }
+                let d = (calc_dist2(coord_i, coord_j) as f64).sqrt();
+                dist[i][j] = d - score * 3000.0;
             }
         }
 
