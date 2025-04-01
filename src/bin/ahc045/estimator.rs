@@ -1,7 +1,5 @@
 use itertools::Itertools;
 use proconio::input_interactive;
-use rand::Rng;
-use rand_pcg::Pcg64Mcg;
 
 use crate::{
     coord::{calc_dist2, Coord},
@@ -23,10 +21,19 @@ impl Estimator {
             .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
             .collect::<Vec<Coord>>();
 
-        let mut rng = Pcg64Mcg::new(100);
+        // クエリに選ばれる点の基準は誤差範囲が大きい点を優先する
+        let mut delta = input
+            .range
+            .iter()
+            .enumerate()
+            .map(|(i, (lx, rx, ly, ry))| (rx - lx + ry - ly, i))
+            .collect::<Vec<_>>();
+        delta.sort();
+        delta.reverse();
+        delta.truncate(input.Q);
+
         let mut subset = vec![];
         let mut edges = vec![];
-        let mut used_cnt = vec![0; input.N];
         let mut count_included = vec![vec![0; input.N]; input.N];
         let mut count_appear = vec![vec![0; input.N]; input.N];
 
@@ -34,11 +41,7 @@ impl Estimator {
         // 比較的距離が短いと予想される
         // そのため、その辺が選ばれる回数をカウントし、カウントされる割合を長さに換算する
 
-        for _ in 0..input.Q {
-            let mut base_idx = rng.gen_range(0..input.N);
-            while used_cnt[base_idx] > *used_cnt.iter().min().unwrap() {
-                base_idx = rng.gen_range(0..input.N);
-            }
+        for base_idx in delta.iter().map(|(_, i)| *i) {
             let base = xy_center[base_idx];
 
             let mut candidates = vec![];
@@ -54,9 +57,6 @@ impl Estimator {
             candidates.push((0, base_idx));
             let mut selected = candidates.iter().map(|(_, i)| *i).collect::<Vec<_>>();
             selected.sort();
-            for i in selected.iter() {
-                used_cnt[*i] += 1;
-            }
 
             for i in selected.iter() {
                 for j in selected.iter() {

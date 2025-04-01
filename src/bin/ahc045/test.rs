@@ -134,7 +134,7 @@ mod tests {
         let delta_score = vis_score as i64 - before_score as i64;
 
         println!(
-            "{}: M={}, L={}, Q={}, score={}, elapsed={}, delta={}",
+            "{}: M={}, L={}, W={}, score={}, elapsed={}, delta={}",
             if vis_score == score {
                 test_number.to_string().green()
             } else {
