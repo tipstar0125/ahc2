@@ -9,6 +9,7 @@ use input::Input;
 mod common;
 mod construct;
 mod coord;
+mod dsu;
 mod estimator;
 mod input;
 mod test;
