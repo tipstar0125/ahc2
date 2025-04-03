@@ -31,7 +31,9 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) {
     let estimator = Estimator::new(input);
-    Forest::solve(input, &estimator.dist, TLE);
+    let mut forest = Forest::new(input, &estimator.dist, 0.5);
+    forest.annealing(input, &estimator.dist, TLE);
+    forest.output(&estimator.dist);
 }
 
 fn main() {
