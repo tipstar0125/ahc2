@@ -2,13 +2,14 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
-use construct::Forest;
+use cut::CutTree;
 use estimator::Estimator;
 use input::Input;
 
 mod common;
 mod construct;
 mod coord;
+mod cut;
 mod dsu;
 mod estimator;
 mod input;
@@ -31,9 +32,11 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) {
     let estimator = Estimator::new(input);
-    let mut forest = Forest::new(input, &estimator.dist, 0.5);
-    forest.annealing(input, &estimator.dist, TLE);
-    forest.output(&estimator.dist);
+    let mut cut_tree = CutTree::new(input, &estimator.dist);
+    cut_tree.cut(input);
+    cut_tree.make_rest(input, &estimator.dist);
+    cut_tree.climbing(input, &estimator.dist, TLE);
+    cut_tree.output(&estimator.dist);
 }
 
 fn main() {
