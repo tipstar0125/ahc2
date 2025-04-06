@@ -30,18 +30,27 @@ impl Estimator {
             .collect::<Vec<_>>();
         delta.sort();
         delta.reverse();
-        delta.truncate(input.Q);
 
         let mut subset = vec![];
         let mut edges = vec![];
         let mut count_included = vec![vec![0; input.N]; input.N];
         let mut count_appear = vec![vec![0; input.N]; input.N];
+        let mut used = vec![false; input.N];
 
         // クエリ対象の点をまんべんなく選択し、最小全域木の辺となる頂点間の長さは
         // 比較的距離が短いと予想される
         // そのため、その辺が選ばれる回数をカウントし、カウントされる割合を長さに換算する
 
+        let mut cnt = 0;
         for base_idx in delta.iter().map(|(_, i)| *i) {
+            if input.L <= 3 && used[base_idx] {
+                continue;
+            }
+            cnt += 1;
+            if cnt > input.Q {
+                break;
+            }
+            used[base_idx] = true;
             let base = xy_center[base_idx];
 
             let mut candidates = vec![];
@@ -59,6 +68,7 @@ impl Estimator {
             selected.sort();
 
             for i in selected.iter() {
+                used[*i] = true;
                 for j in selected.iter() {
                     if i == j {
                         continue;

@@ -2,9 +2,10 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
+use coord::{calc_dist2, Coord};
 use cut::CutTree;
-use estimator::Estimator;
 use input::Input;
+use itertools::Itertools;
 
 mod common;
 mod construct;
@@ -31,12 +32,23 @@ mod test;
 const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) {
-    let estimator = Estimator::new(input);
-    let mut cut_tree = CutTree::new(input, &estimator.dist);
+    let xy_center = input
+        .range
+        .iter()
+        .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
+        .collect_vec();
+    let mut dist = vec![vec![0.0; input.N]; input.N];
+    for i in 0..input.N {
+        for j in 0..input.N {
+            dist[i][j] = calc_dist2(xy_center[i], xy_center[j]) as f64;
+            dist[j][i] = dist[i][j];
+        }
+    }
+    let mut cut_tree = CutTree::new(input, &dist);
+    dist = cut_tree.query(input);
     cut_tree.cut(input);
-    cut_tree.make_rest(input, &estimator.dist);
-    cut_tree.climbing(input, &estimator.dist, TLE);
-    cut_tree.output(&estimator.dist);
+    cut_tree.make_rest(input, &dist);
+    cut_tree.output(&dist);
 }
 
 fn main() {
