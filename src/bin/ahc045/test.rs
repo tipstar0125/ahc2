@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn multi() {
         let job_num = 4;
-        let test_case_num = 50;
+        let test_case_num = 2000;
 
         let initial_score = 0;
         let before_scores = match File::open("before.json") {
