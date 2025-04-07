@@ -48,6 +48,7 @@ fn solve(input: &Input) {
     dist = cut_tree.query(input);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);
+    cut_tree.climbing2(input, &dist, TLE);
     cut_tree.output(&dist);
 }
 

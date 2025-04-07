@@ -421,6 +421,178 @@ impl CutTree {
         eprintln!("updated_cnt = {}", updated_cnt);
         eprintln!("iter = {}", iter);
     }
+    pub fn climbing2(&mut self, input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
+        let mut lengths = vec![0.0; input.M];
+
+        for (idx, group) in self.group.iter().enumerate() {
+            let mut uf = UnionFind::new(group.len());
+            let mut cand = vec![];
+            for i in 0..group.len() {
+                for j in i + 1..group.len() {
+                    cand.push((dist[group[i]][group[j]], i, j));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (_, i, j) in cand.iter() {
+                if uf.is_same(*i, *j) {
+                    continue;
+                }
+                uf.unite(*i, *j);
+                lengths[idx] += dist[group[*i]][group[*j]];
+            }
+        }
+
+        let mut iter = 0;
+        let mut updated_cnt = 0;
+
+        while get_time() < TLE {
+            iter += 1;
+            let ga = self.rng.gen_range(0..input.M);
+            let gb = self.rng.gen_range(0..input.M);
+            if ga == gb {
+                continue;
+            }
+            let before_length = lengths[ga] + lengths[gb];
+
+            let nodes = self.group[ga]
+                .iter()
+                .cloned()
+                .chain(self.group[gb].iter().cloned())
+                .collect_vec();
+
+            // a, bのグループについて、最小全域木を構成
+            let mut score = 0.0;
+            let mut uf = UnionFind::new(nodes.len());
+            let mut edges = vec![vec![]; input.N];
+            let mut cand = vec![];
+            for i in 0..nodes.len() {
+                for j in i + 1..nodes.len() {
+                    cand.push((dist[nodes[i]][nodes[j]], i, j));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (_, i, j) in cand.iter() {
+                if uf.is_same(*i, *j) {
+                    continue;
+                }
+                uf.unite(*i, *j);
+                edges[nodes[*i]].push(nodes[*j]);
+                edges[nodes[*j]].push(nodes[*i]);
+                score += dist[nodes[*i]][nodes[*j]];
+            }
+
+            let mut size = vec![0; input.N];
+            for i in 0..nodes.len() {
+                size[nodes[i]] = 1;
+            }
+            let start = nodes[0];
+            let mut used = vec![false; input.N];
+            let mut parents = vec![!0; input.N];
+            let mut children = vec![vec![]; input.N];
+            used[start] = true;
+            dfs(
+                start,
+                &edges,
+                &mut used,
+                &mut size,
+                &mut parents,
+                &mut children,
+            );
+            assert!(*size.iter().max().unwrap() == nodes.len());
+
+            let mut indexes = size.iter().positions(|&s| s == input.G[ga]).collect_vec();
+            indexes.sort_by(|a, b| {
+                if parents[*a] == !0 || parents[*b] == !0 {
+                    Ordering::Equal
+                } else {
+                    dist[*a][parents[*a]]
+                        .partial_cmp(&dist[*b][parents[*b]])
+                        .unwrap()
+                }
+            });
+            let idx = {
+                if indexes.len() > 0 {
+                    indexes.pop().unwrap()
+                } else {
+                    let mut idx = 0;
+                    let mut diff = 100i32;
+                    for i in 0..input.N {
+                        let s = size[i];
+                        if (input.G[ga] as i32 - s as i32).abs() < diff {
+                            diff = (input.G[ga] as i32 - s as i32).abs();
+                            idx = i;
+                        }
+                    }
+                    idx
+                }
+            };
+            let mut a_nodes = vec![idx];
+            let mut Q = VecDeque::new();
+            Q.push_back(idx);
+            while let Some(v) = Q.pop_front() {
+                for &u in children[v].iter() {
+                    a_nodes.push(u);
+                    Q.push_back(u);
+                }
+            }
+            let mut b_nodes = vec![];
+            for node in nodes.iter() {
+                if !a_nodes.contains(node) {
+                    b_nodes.push(*node);
+                }
+            }
+            if a_nodes.len() != input.G[ga] {
+                continue;
+            }
+
+            // aのグループについて、最小全域木を構成
+            let mut score_a = 0.0;
+            let mut uf = UnionFind::new(a_nodes.len());
+            let mut cand = vec![];
+            for i in 0..a_nodes.len() {
+                for j in i + 1..a_nodes.len() {
+                    cand.push((dist[a_nodes[i]][a_nodes[j]], i, j));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (_, i, j) in cand.iter() {
+                if uf.is_same(*i, *j) {
+                    continue;
+                }
+                uf.unite(*i, *j);
+                score_a += dist[a_nodes[*i]][a_nodes[*j]];
+            }
+            // bのグループについて、最小全域木を構成
+            let mut score_b = 0.0;
+            let mut uf = UnionFind::new(b_nodes.len());
+            let mut cand = vec![];
+            for i in 0..b_nodes.len() {
+                for j in i + 1..b_nodes.len() {
+                    cand.push((dist[b_nodes[i]][b_nodes[j]], i, j));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (_, i, j) in cand.iter() {
+                if uf.is_same(*i, *j) {
+                    continue;
+                }
+                uf.unite(*i, *j);
+                score_b += dist[b_nodes[*i]][b_nodes[*j]];
+            }
+
+            let after_length = score_a + score_b;
+            let diff_score = after_length - before_length;
+            if diff_score < 0.0 {
+                lengths[ga] = score_a;
+                lengths[gb] = score_b;
+                self.group[ga] = a_nodes;
+                self.group[gb] = b_nodes;
+                updated_cnt += 1;
+            }
+        }
+        eprintln!("updated_cnt = {}", updated_cnt);
+        eprintln!("iter = {}", iter);
+    }
     pub fn get_score(&self, dist: &Vec<Vec<f64>>) -> f64 {
         let mut score = 0.0;
         for group in self.group.iter() {
