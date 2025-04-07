@@ -136,7 +136,7 @@ impl CutTree {
                     count_included[i][j] as f64 / count_appear[i][j] as f64
                 };
                 let d = (calc_dist2(coord_i, coord_j) as f64).sqrt();
-                dist[i][j] = d - score * 3000.0;
+                dist[i][j] = d - score * 100000000.0;
             }
         }
         dist
@@ -421,7 +421,7 @@ impl CutTree {
         eprintln!("updated_cnt = {}", updated_cnt);
         eprintln!("iter = {}", iter);
     }
-    pub fn climbing2(&mut self, input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
+    pub fn annealing(&mut self, input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
         let mut lengths = vec![0.0; input.M];
 
         for (idx, group) in self.group.iter().enumerate() {
@@ -445,13 +445,21 @@ impl CutTree {
         let mut iter = 0;
         let mut updated_cnt = 0;
 
+        let T0 = 50.0;
+        let T1 = 10.0;
+
         while get_time() < TLE {
             iter += 1;
-            let ga = self.rng.gen_range(0..input.M);
-            let gb = self.rng.gen_range(0..input.M);
+            let mut ga = self.rng.gen_range(0..input.M);
+            let mut gb = self.rng.gen_range(0..input.M);
             if ga == gb {
                 continue;
             }
+
+            if input.G[ga] > input.G[gb] {
+                std::mem::swap(&mut ga, &mut gb);
+            }
+
             let before_length = lengths[ga] + lengths[gb];
 
             let nodes = self.group[ga]
@@ -461,7 +469,6 @@ impl CutTree {
                 .collect_vec();
 
             // a, bのグループについて、最小全域木を構成
-            let mut score = 0.0;
             let mut uf = UnionFind::new(nodes.len());
             let mut edges = vec![vec![]; input.N];
             let mut cand = vec![];
@@ -478,7 +485,6 @@ impl CutTree {
                 uf.unite(*i, *j);
                 edges[nodes[*i]].push(nodes[*j]);
                 edges[nodes[*j]].push(nodes[*i]);
-                score += dist[nodes[*i]][nodes[*j]];
             }
 
             let mut size = vec![0; input.N];
@@ -526,6 +532,7 @@ impl CutTree {
                     idx
                 }
             };
+
             let mut a_nodes = vec![idx];
             let mut Q = VecDeque::new();
             Q.push_back(idx);
@@ -541,9 +548,31 @@ impl CutTree {
                     b_nodes.push(*node);
                 }
             }
-            if a_nodes.len() != input.G[ga] {
-                continue;
+
+            if a_nodes.len() > input.G[ga] {
+                std::mem::swap(&mut ga, &mut gb);
+                std::mem::swap(&mut a_nodes, &mut b_nodes);
             }
+            let mut cand = vec![];
+            for a in 0..a_nodes.len() {
+                for b in 0..b_nodes.len() {
+                    cand.push((dist[a_nodes[a]][b_nodes[b]], b_nodes[b]));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            let mut added_nodes = vec![];
+            for (_, idx) in cand.iter() {
+                if added_nodes.len() == input.G[ga] - a_nodes.len() {
+                    break;
+                }
+                if !added_nodes.contains(idx) {
+                    added_nodes.push(*idx);
+                }
+            }
+            a_nodes.extend(added_nodes);
+            b_nodes.retain(|node| !a_nodes.contains(node));
+            assert!(a_nodes.len() == input.G[ga]);
+            assert!(b_nodes.len() == input.G[gb]);
 
             // aのグループについて、最小全域木を構成
             let mut score_a = 0.0;
@@ -582,7 +611,8 @@ impl CutTree {
 
             let after_length = score_a + score_b;
             let diff_score = after_length - before_length;
-            if diff_score < 0.0 {
+            let T = T0 + (T1 - T0) * (get_time() / TLE);
+            if diff_score < 0.0 || self.rng.gen_bool((-diff_score / T).exp()) {
                 lengths[ga] = score_a;
                 lengths[gb] = score_b;
                 self.group[ga] = a_nodes;

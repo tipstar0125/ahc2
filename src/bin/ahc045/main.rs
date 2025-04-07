@@ -37,18 +37,18 @@ fn solve(input: &Input) {
         .iter()
         .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
         .collect_vec();
-    let mut dist = vec![vec![0.0; input.N]; input.N];
+    let mut dist_center = vec![vec![0.0; input.N]; input.N];
     for i in 0..input.N {
         for j in 0..input.N {
-            dist[i][j] = calc_dist2(xy_center[i], xy_center[j]) as f64;
-            dist[j][i] = dist[i][j];
+            dist_center[i][j] = calc_dist2(xy_center[i], xy_center[j]) as f64;
+            dist_center[j][i] = dist_center[i][j];
         }
     }
-    let mut cut_tree = CutTree::new(input, &dist);
-    dist = cut_tree.query(input);
+    let mut cut_tree = CutTree::new(input, &dist_center);
+    let dist = cut_tree.query(input);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);
-    cut_tree.climbing2(input, &dist, TLE);
+    cut_tree.annealing(input, &dist, TLE);
     cut_tree.output(&dist);
 }
 
