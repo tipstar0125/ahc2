@@ -12,6 +12,7 @@ use crate::{
     input::Input,
 };
 
+#[derive(Clone)]
 pub struct CutTree {
     rng: Pcg64Mcg,
     edges: Vec<Vec<usize>>,
@@ -248,7 +249,7 @@ impl CutTree {
                     self.edges[i].retain(|&u| u != *node);
                 }
             }
-            if made_cnt == input.M || made_cnt == 0 {
+            if made_cnt == 0 {
                 break;
             }
         }
@@ -420,6 +421,28 @@ impl CutTree {
         eprintln!("updated_cnt = {}", updated_cnt);
         eprintln!("iter = {}", iter);
     }
+    pub fn get_score(&self, dist: &Vec<Vec<f64>>) -> f64 {
+        let mut score = 0.0;
+        for group in self.group.iter() {
+            let mut uf = UnionFind::new(group.len());
+            let mut cand = vec![];
+            for i in 0..group.len() {
+                for j in i + 1..group.len() {
+                    let d = dist[group[i]][group[j]];
+                    cand.push((d, i, j, group[i], group[j]));
+                }
+            }
+            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (_, i, j, a, b) in cand.iter() {
+                if uf.is_same(*i, *j) {
+                    continue;
+                }
+                uf.unite(*i, *j);
+                score += dist[*a][*b];
+            }
+        }
+        score
+    }
     pub fn output(&self, dist: &Vec<Vec<f64>>) {
         println!("!");
         for group in self.group.iter() {
@@ -442,4 +465,24 @@ impl CutTree {
             }
         }
     }
+}
+
+fn dfs(
+    v: usize,
+    edges: &Vec<Vec<usize>>,
+    used: &mut Vec<bool>,
+    size: &mut Vec<usize>,
+    parents: &mut Vec<usize>,
+    children: &mut Vec<Vec<usize>>,
+) -> usize {
+    for &u in edges[v].iter() {
+        if used[u] {
+            continue;
+        }
+        used[u] = true;
+        parents[u] = v;
+        children[v].push(u);
+        size[v] += dfs(u, edges, used, size, parents, children);
+    }
+    size[v]
 }
