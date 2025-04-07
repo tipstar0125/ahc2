@@ -60,7 +60,7 @@ impl CutTree {
             .range
             .iter()
             .enumerate()
-            .map(|(i, (lx, rx, ly, ry))| (rx - lx + ry - ly, i))
+            .map(|(i, (lx, rx, ly, ry))| ((rx - lx).max(ry - ly), i))
             .collect::<Vec<_>>();
         delta.sort();
         delta.reverse();
