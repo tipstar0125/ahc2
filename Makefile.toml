@@ -61,3 +61,17 @@ script = ['''
 #!/bin/bash
 cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path tools/$1/Cargo.toml --bin vis tools/$1/in/$2.txt tools/$1/out/$2.txt
 ''']
+
+[tasks.gen]
+description = "Generate input"
+script = ['''
+#!/bin/bash
+cd tools/$1
+rm seeds.txt
+touch seeds.txt
+for i in $(seq 0 $(($2-1))); do
+    echo $i >> seeds.txt
+done
+cargo +1.74-x86_64-unknown-linux-gnu run -r --manifest-path Cargo.toml --bin gen seeds.txt
+cd ../..
+''']
