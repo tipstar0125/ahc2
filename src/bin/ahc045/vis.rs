@@ -70,11 +70,13 @@ impl App for Egui {
             let d = VIS_WIDTH / ((height.max(width)) as f32);
 
             view_world(ui, &self.input, d);
-            view_ok_points(ui, &self.output, d);
-            view_true_edges(ui, &self.input, &self.output, d);
-            view_ellipses(ui, &self.output, d);
-            view_true_points(ui, &self.input, d);
-            view_range(ui, &self.input, d);
+            // view_ok_points(ui, &self.output, d);
+            // view_true_edges(ui, &self.input, &self.output, d);
+            // view_ellipses(ui, &self.output, d);
+            view_points(ui, &self.input.xy, d, Color32::GRAY);
+            view_points(ui, &self.output.estimate_points, d, Color32::BLUE);
+            view_diff_points(ui, &self.input.xy, &self.output.estimate_points, d);
+            // view_range(ui, &self.input, d);
 
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Turn: ").size(20.0));
@@ -118,13 +120,32 @@ pub fn view_world(ui: &mut Ui, input: &Input, d: f32) {
     );
 }
 
-pub fn view_true_points(ui: &mut Ui, input: &Input, d: f32) {
-    for coord in &input.xy {
+pub fn view_points(ui: &mut Ui, coords: &Vec<Coord>, d: f32, color: Color32) {
+    for coord in coords {
         let pos = Pos2 {
             x: d * coord.x as f32,
             y: d * coord.y as f32,
         };
-        circle(ui, pos, 3.0, Color32::GRAY, Color32::TRANSPARENT);
+        circle(ui, pos, 3.0, color, Color32::TRANSPARENT);
+    }
+}
+
+pub fn view_diff_points(
+    ui: &mut Ui,
+    true_points: &Vec<Coord>,
+    estimate_points: &Vec<Coord>,
+    d: f32,
+) {
+    for i in 0..true_points.len() {
+        let pos0 = Pos2 {
+            x: d * true_points[i].x as f32,
+            y: d * true_points[i].y as f32,
+        };
+        let pos1 = Pos2 {
+            x: d * estimate_points[i].x as f32,
+            y: d * estimate_points[i].y as f32,
+        };
+        line(ui, pos0, pos1, Color32::RED, 1.0);
     }
 }
 
@@ -142,29 +163,29 @@ pub fn view_range(ui: &mut Ui, input: &Input, d: f32) {
     }
 }
 
-pub fn view_true_edges(ui: &mut Ui, input: &Input, output: &Output, d: f32) {
-    for (i, j) in &output.true_edges {
-        let pos0 = Pos2 {
-            x: d * input.xy[*i].x as f32,
-            y: d * input.xy[*i].y as f32,
-        };
-        let pos1 = Pos2 {
-            x: d * input.xy[*j].x as f32,
-            y: d * input.xy[*j].y as f32,
-        };
-        line(ui, pos0, pos1, Color32::GRAY, 1.0);
-    }
-}
+// pub fn view_true_edges(ui: &mut Ui, input: &Input, output: &Output, d: f32) {
+//     for (i, j) in &output.true_edges {
+//         let pos0 = Pos2 {
+//             x: d * input.xy[*i].x as f32,
+//             y: d * input.xy[*i].y as f32,
+//         };
+//         let pos1 = Pos2 {
+//             x: d * input.xy[*j].x as f32,
+//             y: d * input.xy[*j].y as f32,
+//         };
+//         line(ui, pos0, pos1, Color32::GRAY, 1.0);
+//     }
+// }
 
-pub fn view_ok_points(ui: &mut Ui, output: &Output, d: f32) {
-    for coord in &output.ok_points {
-        let pos = Pos2 {
-            x: d * coord.x as f32,
-            y: d * coord.y as f32,
-        };
-        circle(ui, pos, 3.0, Color32::GREEN, Color32::TRANSPARENT);
-    }
-}
+// pub fn view_ok_points(ui: &mut Ui, output: &Output, d: f32) {
+//     for coord in &output.ok_points {
+//         let pos = Pos2 {
+//             x: d * coord.x as f32,
+//             y: d * coord.y as f32,
+//         };
+//         circle(ui, pos, 3.0, Color32::GREEN, Color32::TRANSPARENT);
+//     }
+// }
 
 fn eigen_decomposition_2x2(cov: &[[f64; 2]; 2]) -> ([f64; 2], f64) {
     let a = cov[0][0];
@@ -191,22 +212,22 @@ fn eigen_decomposition_2x2(cov: &[[f64; 2]; 2]) -> ([f64; 2], f64) {
 
 const PI: f64 = std::f64::consts::PI;
 
-pub fn view_ellipses(ui: &mut Ui, output: &Output, d: f32) {
-    let sigma = 2.0;
-    let radius = 0.2;
-    for (mu, cov) in &output.ellipses {
-        ellipse(
-            ui,
-            Color32::RED,
-            Color32::TRANSPARENT,
-            radius,
-            d,
-            mu,
-            cov,
-            sigma,
-        );
-    }
-}
+// pub fn view_ellipses(ui: &mut Ui, output: &Output, d: f32) {
+//     let sigma = 2.0;
+//     let radius = 0.2;
+//     for (mu, cov) in &output.ellipses {
+//         ellipse(
+//             ui,
+//             Color32::RED,
+//             Color32::TRANSPARENT,
+//             radius,
+//             d,
+//             mu,
+//             cov,
+//             sigma,
+//         );
+//     }
+// }
 
 pub fn visualizer(input: Input, output: Output, max_turn: usize) {
     let options = NativeOptions {

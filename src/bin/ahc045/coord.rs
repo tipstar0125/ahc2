@@ -52,6 +52,12 @@ impl std::ops::Mul<Coord> for Coord {
     }
 }
 
+pub fn calc_dist(a: Coord, b: Coord) -> usize {
+    let dx = a.x.abs_diff(b.x);
+    let dy = a.y.abs_diff(b.y);
+    ((dx * dx + dy * dy) as f64).sqrt() as usize
+}
+
 pub fn calc_dist2(a: Coord, b: Coord) -> usize {
     let dx = a.x.abs_diff(b.x);
     let dy = a.y.abs_diff(b.y);
