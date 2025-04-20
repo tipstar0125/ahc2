@@ -2,24 +2,17 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
-use coord::{calc_dist2, Coord};
+use coord::Coord;
 use cut::CutTree;
-use eframe::egui::output;
 use estimator::Estimator;
 use input::Input;
-use itertools::Itertools;
-use normal::sample_2d_normal;
-use rand::Rng;
-use rand_pcg::Pcg64Mcg;
 
 mod common;
-mod construct;
 mod coord;
 mod cut;
 mod dsu;
 mod estimator;
 mod input;
-mod normal;
 mod test;
 mod vis;
 
@@ -40,7 +33,7 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) -> Vec<Coord> {
     let mut estimator = Estimator::new(&input);
-    estimator.climbing(&input, TLE);
+    estimator.climbing(&input, 0.5);
     estimator.gibbs_sampling(&input);
     let dist = estimator
         .dist

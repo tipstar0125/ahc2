@@ -24,7 +24,7 @@ pub fn read_input() -> Input {
         }
         xy.into_iter().map(|(x, y)| Coord::new(x, y)).collect()
     } else {
-        vec![]
+        vec![Coord::new(0, 0); N]
     };
 
     Input {

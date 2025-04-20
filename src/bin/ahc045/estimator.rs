@@ -374,7 +374,7 @@ impl Estimator {
             let mut dist = self.dist.clone();
             for idx in 0..input.N {
                 let before_coord = xy[idx];
-                for _ in 0..10 {
+                for _ in 0..2 {
                     xy[idx] = Coord::new(
                         rng.gen_range(input.range[idx].0..=input.range[idx].1),
                         rng.gen_range(input.range[idx].2..=input.range[idx].3),
