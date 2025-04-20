@@ -17,6 +17,7 @@ use crate::{
 
 pub struct Estimator {
     inequalities: Vec<Inequality>,
+    ineqs: Vec<Ineq>,
     pub xy: Vec<Coord>,
     pub dist: Vec<Vec<usize>>,
     pub error_num: Vec<usize>,
@@ -228,6 +229,7 @@ impl Estimator {
         }
 
         let mut inequalities = vec![Inequality::new(); input.N];
+        let mut ineqs = vec![];
         for nodes in queries.iter() {
             let nodes = nodes.iter().cloned().collect::<Vec<_>>();
             println!("? {} {}", nodes.len(), nodes.iter().join(" "));
@@ -255,6 +257,7 @@ impl Estimator {
                     for &idx in related_nodes.iter() {
                         inequalities[idx].add(short, long);
                     }
+                    ineqs.push(Ineq::new(short, long, &dist_center));
                 }
             }
         }
@@ -264,8 +267,15 @@ impl Estimator {
             error_num[i] = inequalities[i].get_error_num(&dist_center);
         }
 
+        // TODO 重複を削除を可能な限り内容にクエリを工夫する必要がある
+        ineqs.sort();
+        ineqs.dedup();
+        let ineq_error_num = ineqs.iter().filter(|ineq| ineq.is_error).count();
+        eprintln!("ineq: {}/{}", ineq_error_num, ineqs.len());
+
         Self {
             inequalities,
+            ineqs,
             xy: xy_center,
             dist: dist_center,
             error_num,
@@ -574,6 +584,64 @@ fn to_node_idx(edge: &mut (usize, usize), points: &Vec<usize>) {
     edge.1 = v;
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct Ineq {
+    pub short: (usize, usize),
+    pub long: (usize, usize),
+    pub is_error: bool,
+}
+
+impl Ineq {
+    fn new(short: (usize, usize), long: (usize, usize), dist: &Vec<Vec<usize>>) -> Self {
+        let is_error = if dist[short.0][short.1] > dist[long.0][long.1] {
+            true
+        } else {
+            false
+        };
+        Self {
+            short,
+            long,
+            is_error,
+        }
+    }
+    fn is_error(&self, dist: &Vec<Vec<usize>>) -> bool {
+        let dist_short = dist[self.short.0][self.short.1];
+        let dist_long = dist[self.long.0][self.long.1];
+        if dist_short > dist_long {
+            true
+        } else {
+            false
+        }
+    }
+    fn is_error_with_update(&mut self, dist: &Vec<Vec<usize>>) -> bool {
+        let dist_short = dist[self.short.0][self.short.1];
+        let dist_long = dist[self.long.0][self.long.1];
+        if dist_short > dist_long {
+            self.is_error = true;
+        } else {
+            self.is_error = false;
+        }
+        self.is_error
+    }
+    fn swap_short_nodes(&mut self) {
+        std::mem::swap(&mut self.short.0, &mut self.short.1);
+    }
+    fn swap_long_nodes(&mut self) {
+        std::mem::swap(&mut self.long.0, &mut self.long.1);
+    }
+    fn calc_gradient_short(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (isize, isize) {
+        let length = dist[self.short.0][self.short.1] as isize;
+        let dx = xy[self.short.1].x as isize - xy[self.short.0].x as isize;
+        let dy = xy[self.short.1].y as isize - xy[self.short.0].y as isize;
+        (dx / length, dy / length)
+    }
+    fn calc_gradient_long(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (isize, isize) {
+        let length = dist[self.long.0][self.long.1] as isize;
+        let dx = xy[self.long.1].x as isize - xy[self.long.0].x as isize;
+        let dy = xy[self.long.1].y as isize - xy[self.long.0].y as isize;
+        (-dx / length, -dy / length)
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -603,22 +671,20 @@ mod tests {
                 to_node_idx(edge, &points);
             }
         }
-        let mut inequalities = vec![Inequality::new(); points.iter().max().unwrap() + 1];
+        let dist =
+            vec![vec![0; points.iter().max().unwrap() + 1]; points.iter().max().unwrap() + 1]; //何もしない
+        let mut inequalities = vec![];
         for cycle in cycles.iter() {
             let long = cycle[0];
             for &short in cycle.iter().skip(1) {
-                let related_nodes = vec![long.0, long.1, short.0, short.1];
-                for &idx in related_nodes.iter() {
-                    inequalities[idx].add(short, long);
-                }
+                inequalities.push(Ineq::new(short, long, &dist));
             }
         }
+        inequalities.sort();
+        inequalities.dedup();
 
-        for (idx, row) in inequalities.iter().enumerate() {
-            eprintln!("{}", idx);
-            for (short, longs) in row.0.iter() {
-                eprintln!("{:?} {:?}", short, longs);
-            }
+        for row in inequalities.iter() {
+            eprintln!("short = {:?}, long = {:?}", row.short, row.long);
         }
     }
 }
