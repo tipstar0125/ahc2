@@ -39,27 +39,15 @@ mod vis;
 const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) -> Vec<Coord> {
-    // let xy_center = input
-    //     .range
-    //     .iter()
-    //     .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
-    //     .collect_vec();
-    // let mut dist = vec![vec![0.0; input.N]; input.N];
-    // for i in 0..input.N {
-    //     for j in 0..input.N {
-    //         dist[i][j] = calc_dist2(xy_center[i], xy_center[j]) as f64;
-    //         dist[j][i] = dist[i][j];
-    //     }
-    // }
     let mut estimator = Estimator::new(&input);
     estimator.climbing(&input, TLE);
+    estimator.gibbs_sampling(&input);
     let dist = estimator
         .dist
         .iter()
         .map(|row| row.iter().map(|&x| x as f64).collect::<Vec<_>>())
         .collect::<Vec<_>>();
     let mut cut_tree = CutTree::new(input, &dist);
-    // let dist = cut_tree.query(input);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);
     cut_tree.annealing(input, &dist, TLE);
@@ -73,7 +61,7 @@ fn main() {
 
     let estimate_points = solve(&input);
     let output = Output { estimate_points };
-    vis::visualizer(input, output, 100);
+    // vis::visualizer(input, output, 100);
 
     // let delta = 500;
     // let pos0_center = Coord::new(3000, 7000);
