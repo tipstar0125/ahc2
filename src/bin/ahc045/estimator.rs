@@ -374,6 +374,7 @@ impl Estimator {
             let mut dist = self.dist.clone();
             for idx in 0..input.N {
                 let before_coord = xy[idx];
+                let before_error_num = self.inequalities[idx].get_error_num(&dist);
                 for _ in 0..2 {
                     xy[idx] = Coord::new(
                         rng.gen_range(input.range[idx].0..=input.range[idx].1),
@@ -384,7 +385,7 @@ impl Estimator {
                         dist[i][idx] = dist[idx][i];
                     }
                     let after_error_num = self.inequalities[idx].get_error_num(&dist);
-                    if self.error_num[idx] < after_error_num {
+                    if before_error_num < after_error_num {
                         xy[idx] = before_coord;
                         for i in 0..input.N {
                             dist[idx][i] = calc_dist(xy[idx], xy[i]);
