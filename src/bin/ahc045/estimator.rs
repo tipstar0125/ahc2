@@ -270,11 +270,6 @@ impl Estimator {
         // TODO 重複を削除を可能な限り内容にクエリを工夫する必要がある
         ineqs.sort();
         ineqs.dedup();
-        let ineq_error_num = ineqs
-            .iter()
-            .filter(|ineq| ineq.is_error(&dist_center))
-            .count();
-        eprintln!("ineq: {}/{}", ineq_error_num, ineqs.len());
 
         Self {
             inequalities,
@@ -374,10 +369,151 @@ impl Estimator {
         eprintln!("===== finished =====");
         eprintln!();
     }
-    pub fn gibbs_sampling(&mut self, input: &Input) {
+    pub fn climbing2(&mut self, input: &Input, TLE: f64) {
+        let mut true_dist = vec![vec![0; input.N]; input.N];
+        for i in 0..input.N {
+            for j in 0..input.N {
+                true_dist[i][j] = calc_dist(input.xy[i], input.xy[j]);
+            }
+        }
+
+        let mut before_dist_diff = 0;
+        for i in 0..input.N {
+            for j in i + 1..input.N {
+                before_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
+                    true_dist[i][j] - self.dist[i][j]
+                } else {
+                    self.dist[i][j] - true_dist[i][j]
+                };
+            }
+        }
+
+        let before_ineq_error_num = self
+            .ineqs
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+
+        let deltas = input
+            .range
+            .iter()
+            .map(|(lx, rx, ly, ry)| ((rx - lx) as f64, (ry - ly) as f64))
+            .collect::<Vec<_>>();
+
+        let mut rng = Pcg64Mcg::new(100);
+        let mut iter = 0;
+        let mut updated_cnt = 0;
+        let ineq_num = self.ineqs.len();
+        let start_learning_rate = 0.1;
+        let end_learning_rate = 0.02;
+
+        loop {
+            let elapsed_time = get_time();
+            if elapsed_time > TLE {
+                break;
+            }
+
+            let learning_rate = start_learning_rate
+                + (end_learning_rate - start_learning_rate) * elapsed_time / TLE;
+
+            iter += 1;
+            let idx = rng.gen_range(0..ineq_num);
+            if !self.ineqs[idx].is_error_by_dist(&self.dist) {
+                continue;
+            }
+
+            if rng.gen_bool(0.5) {
+                self.ineqs[idx].swap_short_nodes();
+            }
+            if rng.gen_bool(0.5) {
+                self.ineqs[idx].swap_long_nodes();
+            }
+
+            let ineq = &self.ineqs[idx];
+
+            // short
+            let (dx, dy) = ineq.calc_gradient_short(&self.xy, &self.dist);
+            let (dx, dy) = (
+                dx * deltas[ineq.short.0].0 * learning_rate,
+                dy * deltas[ineq.short.0].1 * learning_rate,
+            );
+            let x = (self.xy[ineq.short.0].x as f64 + dx).clamp(
+                input.range[ineq.short.0].0 as f64,
+                input.range[ineq.short.0].1 as f64,
+            ) as usize;
+            let y = (self.xy[ineq.short.0].y as f64 + dy).clamp(
+                input.range[ineq.short.0].2 as f64,
+                input.range[ineq.short.0].3 as f64,
+            ) as usize;
+            self.xy[ineq.short.0] = Coord::new(x, y);
+
+            // long
+            let (dx, dy) = ineq.calc_gradient_long(&self.xy, &self.dist);
+            let (dx, dy) = (
+                dx * deltas[ineq.long.0].0 * learning_rate,
+                dy * deltas[ineq.long.0].1 * learning_rate,
+            );
+            let x = (self.xy[ineq.long.0].x as f64 + dx).clamp(
+                input.range[ineq.long.0].0 as f64,
+                input.range[ineq.long.0].1 as f64,
+            ) as usize;
+            let y = (self.xy[ineq.long.0].y as f64 + dy).clamp(
+                input.range[ineq.long.0].2 as f64,
+                input.range[ineq.long.0].3 as f64,
+            ) as usize;
+
+            self.xy[ineq.long.0] = Coord::new(x, y);
+
+            for i in 0..input.N {
+                self.dist[ineq.short.0][i] = calc_dist(self.xy[ineq.short.0], self.xy[i]);
+                self.dist[i][ineq.short.0] = self.dist[ineq.short.0][i];
+                self.dist[ineq.long.0][i] = calc_dist(self.xy[ineq.long.0], self.xy[i]);
+                self.dist[i][ineq.long.0] = self.dist[ineq.long.0][i];
+            }
+            updated_cnt += 1;
+        }
+
+        let mut after_dist_diff = 0;
+        for i in 0..input.N {
+            for j in i + 1..input.N {
+                after_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
+                    true_dist[i][j] - self.dist[i][j]
+                } else {
+                    self.dist[i][j] - true_dist[i][j]
+                };
+            }
+        }
+
+        eprintln!("===== Estimate by inequalities =====");
+        eprintln!("before dist diff = {}", before_dist_diff);
+        eprintln!("after  dist diff = {}", after_dist_diff);
+        eprintln!(
+            "improve rate: {}",
+            after_dist_diff as f64 / before_dist_diff as f64
+        );
+        eprintln!(
+            "before ineq: {}/{}",
+            before_ineq_error_num,
+            self.ineqs.len()
+        );
+        let after_ineq_error_num = self
+            .ineqs
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+        eprintln!("after ineq: {}/{}", after_ineq_error_num, self.ineqs.len());
+
+        eprintln!("iter = {}", iter);
+        eprintln!("updated_cnt = {}", updated_cnt);
+        eprintln!("===== finished =====");
+        eprintln!();
+    }
+    pub fn gibbs_sampling(&mut self, input: &Input, TLE: f64) {
         let mut rng = Pcg64Mcg::new(100);
         let mut dist_sum = self.dist.clone();
-        let mut best_error_sum = self.error_num.iter().sum::<usize>();
+        let mut best_error_sum = (0..input.N)
+            .map(|i| self.inequalities[i].get_error_num(&self.dist))
+            .sum::<usize>();
         let mut cnt = 1;
 
         let start_time = get_time();
@@ -405,6 +541,9 @@ impl Estimator {
                             dist[i][idx] = dist[idx][i];
                         }
                     } else {
+                        break;
+                    }
+                    if get_time() > TLE {
                         break;
                     }
                 }
@@ -597,8 +736,11 @@ impl Ineq {
     fn new(short: (usize, usize), long: (usize, usize)) -> Self {
         Self { short, long }
     }
-    fn is_error(&self, dist: &Vec<Vec<usize>>) -> bool {
+    fn is_error_by_dist(&self, dist: &Vec<Vec<usize>>) -> bool {
         dist[self.short.0][self.short.1] > dist[self.long.0][self.long.1]
+    }
+    fn is_error_by_coord(&self, xy: &Vec<Coord>) -> bool {
+        calc_dist(xy[self.short.0], xy[self.short.1]) > calc_dist(xy[self.long.0], xy[self.long.1])
     }
     fn swap_short_nodes(&mut self) {
         std::mem::swap(&mut self.short.0, &mut self.short.1);
@@ -606,16 +748,16 @@ impl Ineq {
     fn swap_long_nodes(&mut self) {
         std::mem::swap(&mut self.long.0, &mut self.long.1);
     }
-    fn calc_gradient_short(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (isize, isize) {
-        let length = dist[self.short.0][self.short.1] as isize;
-        let dx = xy[self.short.1].x as isize - xy[self.short.0].x as isize;
-        let dy = xy[self.short.1].y as isize - xy[self.short.0].y as isize;
+    fn calc_gradient_short(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
+        let length = dist[self.short.0][self.short.1] as f64;
+        let dx = xy[self.short.1].x as f64 - xy[self.short.0].x as f64;
+        let dy = xy[self.short.1].y as f64 - xy[self.short.0].y as f64;
         (dx / length, dy / length)
     }
-    fn calc_gradient_long(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (isize, isize) {
-        let length = dist[self.long.0][self.long.1] as isize;
-        let dx = xy[self.long.1].x as isize - xy[self.long.0].x as isize;
-        let dy = xy[self.long.1].y as isize - xy[self.long.0].y as isize;
+    fn calc_gradient_long(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
+        let length = dist[self.long.0][self.long.1] as f64;
+        let dx = xy[self.long.1].x as f64 - xy[self.long.0].x as f64;
+        let dy = xy[self.long.1].y as f64 - xy[self.long.0].y as f64;
         (-dx / length, -dy / length)
     }
 }

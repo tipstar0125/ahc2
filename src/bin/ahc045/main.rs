@@ -33,8 +33,8 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) -> Vec<Coord> {
     let mut estimator = Estimator::new(&input);
-    estimator.climbing(&input, 0.5);
-    estimator.gibbs_sampling(&input);
+    estimator.climbing2(&input, 0.5);
+    estimator.gibbs_sampling(&input, TLE);
     let dist = estimator
         .dist
         .iter()
