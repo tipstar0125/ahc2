@@ -34,12 +34,7 @@ const TLE: f64 = 1.9; // 時間制限
 fn solve(input: &Input) -> Vec<Coord> {
     let mut estimator = Estimator::new(&input);
     estimator.climbing(&input, 0.5);
-    estimator.gibbs_sampling(&input, TLE);
-    let dist = estimator
-        .dist
-        .iter()
-        .map(|row| row.iter().map(|&x| x as f64).collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+    let dist = estimator.gibbs_sampling(&input, TLE);
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);

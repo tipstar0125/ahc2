@@ -1,6 +1,6 @@
 use std::{
     cmp::Reverse,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, VecDeque},
+    collections::{BTreeMap, BinaryHeap, VecDeque},
 };
 
 use itertools::Itertools;
@@ -404,10 +404,10 @@ impl Estimator {
         eprintln!("===== finished =====");
         eprintln!();
     }
-    pub fn gibbs_sampling(&mut self, input: &Input, TLE: f64) {
+    pub fn gibbs_sampling(&mut self, input: &Input, TLE: f64) -> Vec<Vec<f64>> {
         let mut rng = Pcg64Mcg::new(100);
         let mut dist_sum = self.dist.clone();
-        let mut best_error_sum = self
+        let best_error_sum = self
             .ineqs
             .iter()
             .filter(|ineq| ineq.is_error_by_dist(&self.dist))
@@ -425,7 +425,7 @@ impl Estimator {
 
         let start_time = get_time();
 
-        for _ in 0..50 {
+        'outer: for _ in 0..50 {
             let mut xy = self.xy.clone();
             let mut dist = self.dist.clone();
             for idx in 0..input.N {
@@ -457,31 +457,23 @@ impl Estimator {
                         break;
                     }
                     if get_time() > TLE {
-                        break;
+                        break 'outer;
                     }
                 }
             }
-            let after_error_sum = self
-                .ineqs
-                .iter()
-                .filter(|ineq| ineq.is_error_by_dist(&dist))
-                .count();
-            if after_error_sum <= best_error_sum {
-                best_error_sum = after_error_sum;
-                self.xy = xy;
-                for i in 0..input.N {
-                    for j in 0..input.N {
-                        dist_sum[i][j] += dist[i][j];
-                        self.dist[i][j] = dist[i][j];
-                    }
+            self.xy = xy;
+            for i in 0..input.N {
+                for j in 0..input.N {
+                    dist_sum[i][j] += dist[i][j];
+                    self.dist[i][j] = dist[i][j];
                 }
-                cnt += 1;
             }
+            cnt += 1;
         }
-
+        let mut expected_dist = vec![vec![0.0; input.N]; input.N];
         for i in 0..input.N {
             for j in 0..input.N {
-                self.dist[i][j] = dist_sum[i][j] / cnt as usize;
+                expected_dist[i][j] = dist_sum[i][j] as f64 / cnt as f64;
             }
         }
 
@@ -492,6 +484,7 @@ impl Estimator {
         eprintln!("elapsed_time = {}", elapsed_time);
         eprintln!("===== finished =====");
         eprintln!();
+        expected_dist
     }
 }
 
