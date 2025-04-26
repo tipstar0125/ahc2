@@ -16,11 +16,9 @@ use crate::{
 };
 
 pub struct Estimator {
-    inequalities: Vec<Inequality>,
     ineqs: Vec<Ineq>,
     pub xy: Vec<Coord>,
     pub dist: Vec<Vec<usize>>,
-    pub error_num: Vec<usize>,
 }
 
 impl Estimator {
@@ -228,7 +226,6 @@ impl Estimator {
             }
         }
 
-        let mut inequalities = vec![Inequality::new(); input.N];
         let mut ineqs = vec![];
         for nodes in queries.iter() {
             let nodes = nodes.iter().cloned().collect::<Vec<_>>();
@@ -253,18 +250,9 @@ impl Estimator {
             for cycle in cycles.iter() {
                 let long = cycle[0];
                 for &short in cycle.iter().skip(1) {
-                    let related_nodes = vec![long.0, long.1, short.0, short.1];
-                    for &idx in related_nodes.iter() {
-                        inequalities[idx].add(short, long);
-                    }
                     ineqs.push(Ineq::new(short, long));
                 }
             }
-        }
-
-        let mut error_num = vec![0; input.N];
-        for i in 0..input.N {
-            error_num[i] = inequalities[i].get_error_num(&dist_center);
         }
 
         // TODO 重複を削除を可能な限り内容にクエリを工夫する必要がある
@@ -272,104 +260,12 @@ impl Estimator {
         ineqs.dedup();
 
         Self {
-            inequalities,
             ineqs,
             xy: xy_center,
             dist: dist_center,
-            error_num,
         }
     }
     pub fn climbing(&mut self, input: &Input, TLE: f64) {
-        let mut true_dist = vec![vec![0; input.N]; input.N];
-        for i in 0..input.N {
-            for j in 0..input.N {
-                true_dist[i][j] = calc_dist(input.xy[i], input.xy[j]);
-            }
-        }
-
-        let mut before_dist_diff = 0;
-        for i in 0..input.N {
-            for j in i + 1..input.N {
-                before_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
-                    true_dist[i][j] - self.dist[i][j]
-                } else {
-                    self.dist[i][j] - true_dist[i][j]
-                };
-            }
-        }
-
-        let mut rng = Pcg64Mcg::new(100);
-        let mut iter = 0;
-        let mut updated_cnt = 0;
-        let check_interval = 10000;
-        while get_time() < TLE {
-            iter += 1;
-            let idx = rng.gen_range(0..input.N);
-            let before_error_num = self.inequalities[idx].get_error_num(&self.dist);
-
-            let before_coord = self.xy[idx];
-            self.xy[idx] = Coord::new(
-                rng.gen_range(input.range[idx].0..=input.range[idx].1),
-                rng.gen_range(input.range[idx].2..=input.range[idx].3),
-            );
-            for i in 0..input.N {
-                self.dist[idx][i] = calc_dist(self.xy[idx], self.xy[i]);
-                self.dist[i][idx] = self.dist[idx][i];
-            }
-            let after_error_num = self.inequalities[idx].get_error_num(&self.dist);
-            if before_error_num < after_error_num {
-                self.xy[idx] = before_coord;
-                for i in 0..input.N {
-                    self.dist[idx][i] = calc_dist(self.xy[idx], self.xy[i]);
-                    self.dist[i][idx] = self.dist[idx][i];
-                }
-            } else {
-                updated_cnt += 1;
-            }
-            if updated_cnt % check_interval == check_interval - 1 {
-                let error_sum = self
-                    .inequalities
-                    .iter()
-                    .map(|ineq| ineq.get_error_num(&self.dist))
-                    .sum::<usize>();
-                if error_sum == 0 {
-                    break;
-                }
-            }
-        }
-
-        let mut after_dist_diff = 0;
-        for i in 0..input.N {
-            for j in i + 1..input.N {
-                after_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
-                    true_dist[i][j] - self.dist[i][j]
-                } else {
-                    self.dist[i][j] - true_dist[i][j]
-                };
-            }
-        }
-
-        eprintln!("===== Estimate by inequalities =====");
-        eprintln!("before dist diff = {}", before_dist_diff);
-        eprintln!("after  dist diff = {}", after_dist_diff);
-        eprintln!(
-            "improve rate: {}",
-            after_dist_diff as f64 / before_dist_diff as f64
-        );
-        eprintln!(
-            "before_error_num = {}",
-            self.error_num.iter().sum::<usize>()
-        );
-        for i in 0..input.N {
-            self.error_num[i] = self.inequalities[i].get_error_num(&self.dist);
-        }
-        eprintln!("after_error_num = {}", self.error_num.iter().sum::<usize>());
-        eprintln!("iter = {}", iter);
-        eprintln!("updated_cnt = {}", updated_cnt);
-        eprintln!("===== finished =====");
-        eprintln!();
-    }
-    pub fn climbing2(&mut self, input: &Input, TLE: f64) {
         let mut true_dist = vec![vec![0; input.N]; input.N];
         for i in 0..input.N {
             for j in 0..input.N {
@@ -511,9 +407,20 @@ impl Estimator {
     pub fn gibbs_sampling(&mut self, input: &Input, TLE: f64) {
         let mut rng = Pcg64Mcg::new(100);
         let mut dist_sum = self.dist.clone();
-        let mut best_error_sum = (0..input.N)
-            .map(|i| self.inequalities[i].get_error_num(&self.dist))
-            .sum::<usize>();
+        let mut best_error_sum = self
+            .ineqs
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+        let mut ineqs_related_to_node = vec![vec![]; input.N];
+        for ineq in self.ineqs.iter() {
+            let mut nodes = vec![ineq.short.0, ineq.short.1, ineq.long.0, ineq.long.1];
+            nodes.sort();
+            nodes.dedup();
+            for &node in nodes.iter() {
+                ineqs_related_to_node[node].push(ineq);
+            }
+        }
         let mut cnt = 1;
 
         let start_time = get_time();
@@ -523,7 +430,10 @@ impl Estimator {
             let mut dist = self.dist.clone();
             for idx in 0..input.N {
                 let before_coord = xy[idx];
-                let before_error_num = self.inequalities[idx].get_error_num(&dist);
+                let before_error_num = ineqs_related_to_node[idx]
+                    .iter()
+                    .filter(|ineq| ineq.is_error_by_dist(&dist))
+                    .count();
                 for _ in 0..2 {
                     xy[idx] = Coord::new(
                         rng.gen_range(input.range[idx].0..=input.range[idx].1),
@@ -533,7 +443,10 @@ impl Estimator {
                         dist[idx][i] = calc_dist(xy[idx], xy[i]);
                         dist[i][idx] = dist[idx][i];
                     }
-                    let after_error_num = self.inequalities[idx].get_error_num(&dist);
+                    let after_error_num = ineqs_related_to_node[idx]
+                        .iter()
+                        .filter(|ineq| ineq.is_error_by_dist(&dist))
+                        .count();
                     if before_error_num < after_error_num {
                         xy[idx] = before_coord;
                         for i in 0..input.N {
@@ -549,10 +462,10 @@ impl Estimator {
                 }
             }
             let after_error_sum = self
-                .inequalities
+                .ineqs
                 .iter()
-                .map(|ineq| ineq.get_error_num(&dist))
-                .sum::<usize>();
+                .filter(|ineq| ineq.is_error_by_dist(&dist))
+                .count();
             if after_error_sum <= best_error_sum {
                 best_error_sum = after_error_sum;
                 self.xy = xy;
@@ -594,40 +507,6 @@ fn rotate_120deg(pos0: Coord, pos1: Coord) -> Option<Coord> {
         None
     } else {
         Some(Coord::new(x as usize, y as usize))
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Inequality(BTreeMap<(usize, usize), BTreeSet<(usize, usize)>>);
-
-impl Inequality {
-    fn new() -> Self {
-        Self(BTreeMap::default())
-    }
-    fn add(&mut self, mut short: (usize, usize), mut long: (usize, usize)) {
-        if short.0 > short.1 {
-            std::mem::swap(&mut short.0, &mut short.1);
-        }
-        if long.0 > long.1 {
-            std::mem::swap(&mut long.0, &mut long.1);
-        }
-        self.0
-            .entry(short)
-            .or_insert(BTreeSet::default())
-            .insert(long);
-    }
-    fn get_error_num(&self, dist: &Vec<Vec<usize>>) -> usize {
-        let mut error_num = 0;
-        for (short, longs) in self.0.iter() {
-            let dist_short = dist[short.0][short.1];
-            for &long in longs.iter() {
-                let dist_long = dist[long.0][long.1];
-                if dist_short > dist_long {
-                    error_num += 1;
-                }
-            }
-        }
-        error_num
     }
 }
 
