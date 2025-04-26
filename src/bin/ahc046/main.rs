@@ -65,23 +65,11 @@ fn solve(input: &Input) {
                 }
             }
         }
-        // for row in dist {
-        //     for x in row {
-        //         if x == INF {
-        //             eprint!("X ");
-        //         } else {
-        //             eprint!("{} ", x);
-        //         }
-        //     }
-        //     eprintln!();
-        // }
-        // eprintln!("{:?}", route);
 
         let mut actions = vec![];
         for i in 0..route.len() - 1 {
             actions.push(compute_action(route[i], route[i + 1]));
         }
-        // eprintln!("{}", actions.join("\n"));
         ans.push(actions);
         routes.push(route);
     }
