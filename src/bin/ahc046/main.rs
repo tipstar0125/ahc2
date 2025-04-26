@@ -6,6 +6,8 @@ use std::collections::VecDeque;
 use crate::{common::get_time, input::read_input};
 use coord::{Coord, DIJ4};
 use input::Input;
+use rand::Rng;
+use rand_pcg::Pcg64Mcg;
 
 mod common;
 mod coord;
@@ -19,7 +21,13 @@ fn solve(input: &Input) {
     let mut ans = vec![];
     let mut routes = vec![];
     let mut current = input.start;
-    let block = vec![vec![false; input.N]; input.N];
+    let mut block = vec![vec![false; input.N]; input.N];
+
+    let mut rng = Pcg64Mcg::new(100);
+    let mut map = vec![vec![-1; input.N]; input.N];
+    for (i, pos) in input.destinations.iter().enumerate() {
+        map[pos.i][pos.j] = i as i32;
+    }
 
     for dest_idx in 0..input.M - 1 {
         if dest_idx != 0 {
@@ -39,7 +47,10 @@ fn solve(input: &Input) {
             }
             for dij in DIJ4.iter() {
                 let next = pos + *dij;
-                if next.in_map(input.N) && dist[pos.i][pos.j] + 1 < dist[next.i][next.j] {
+                if next.in_map(input.N)
+                    && dist[pos.i][pos.j] + 1 < dist[next.i][next.j]
+                    && !block[next.i][next.j]
+                {
                     dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
                     let mut next_route = r.clone();
                     next_route.push(next);
@@ -68,10 +79,24 @@ fn solve(input: &Input) {
 
         let mut actions = vec![];
         for i in 0..route.len() - 1 {
-            actions.push(compute_action(route[i], route[i + 1]));
+            let action = compute_action(route[i], route[i + 1]);
+            if rng.gen_bool(0.1) {
+                let dir = rng.gen_range(0..4);
+                let next = route[i] + DIJ4[dir];
+                if next.in_map(input.N)
+                    && !block[next.i][next.j]
+                    && map[next.i][next.j] == -1
+                    && action.1 != DIR[dir]
+                {
+                    actions.push(("A".to_string(), DIR[dir].to_string()));
+                    block[next.i][next.j] = true;
+                }
+            }
+            actions.push(action);
         }
         ans.push(actions);
         routes.push(route);
+        map[dest.i][dest.j] = -1;
     }
     let T = ans.iter().flatten().count();
     let score = input.M + 2 * input.M * input.N - T;
@@ -86,40 +111,43 @@ fn main() {
     eprintln!("Elapsed time = {:.3}", get_time());
 }
 
-fn output(ans: &Vec<Vec<String>>) {
+const DIR: [&str; 4] = ["R", "D", "L", "U"];
+
+fn output(ans: &Vec<Vec<(String, String)>>) {
     for actions in ans.iter() {
-        for action in actions.iter() {
-            println!("{}", action);
+        for (action, dir) in actions.iter() {
+            println!("{} {}", action, dir);
         }
     }
 }
 
-fn compute_action(pos0: Coord, pos1: Coord) -> String {
-    let mut res = String::new();
+fn compute_action(pos0: Coord, pos1: Coord) -> (String, String) {
+    let mut action = String::new();
+    let mut dir = String::new();
     if pos0.i == pos1.i {
         let d = (pos1.j as i32 - pos0.j as i32).abs();
         if d > 1 {
-            res += "S ";
+            action += "S";
         } else {
-            res += "M ";
+            action += "M";
         }
         if pos0.j < pos1.j {
-            res += "R";
+            dir += "R";
         } else {
-            res += "L";
+            dir += "L";
         }
     } else {
         let d = (pos1.i as i32 - pos0.i as i32).abs();
         if d > 1 {
-            res += "S ";
+            action += "S";
         } else {
-            res += "M ";
+            action += "M";
         }
         if pos0.i < pos1.i {
-            res += "D";
+            dir += "D";
         } else {
-            res += "U";
+            dir += "U";
         }
     }
-    res
+    (action, dir)
 }
