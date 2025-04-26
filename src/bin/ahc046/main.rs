@@ -18,90 +18,97 @@ const TLE: f64 = 1.9; // 時間制限
 const INF: usize = 1 << 30;
 
 fn solve(input: &Input) {
-    let mut ans = vec![];
-    let mut routes = vec![];
-    let mut current = input.start;
-    let mut block = vec![vec![false; input.N]; input.N];
-
     let mut rng = Pcg64Mcg::new(100);
-    let mut map = vec![vec![-1; input.N]; input.N];
-    for (i, pos) in input.destinations.iter().enumerate() {
-        map[pos.i][pos.j] = i as i32;
-    }
-
-    for dest_idx in 0..input.M - 1 {
-        if dest_idx != 0 {
-            current = input.destinations[dest_idx - 1];
+    let mut best_ans = vec![];
+    let mut best_score = 0;
+    'outer: while get_time() < TLE {
+        let mut ans = vec![];
+        let mut current = input.start;
+        let mut block = vec![vec![false; input.N]; input.N];
+        let mut map = vec![vec![-1; input.N]; input.N];
+        for (i, pos) in input.destinations.iter().enumerate() {
+            map[pos.i][pos.j] = i as i32;
         }
-        let dest = input.destinations[dest_idx];
-        let mut Q = VecDeque::new();
-        Q.push_back((current, vec![current]));
-        let mut dist = vec![vec![INF; input.N]; input.N];
-        dist[current.i][current.j] = 0;
-        let mut route = vec![];
 
-        while let Some((pos, r)) = Q.pop_front() {
-            if pos == dest {
-                route = r;
-                break;
+        for dest_idx in 0..input.M - 1 {
+            if dest_idx != 0 {
+                current = input.destinations[dest_idx - 1];
             }
-            for dij in DIJ4.iter() {
-                let next = pos + *dij;
-                if next.in_map(input.N)
-                    && dist[pos.i][pos.j] + 1 < dist[next.i][next.j]
-                    && !block[next.i][next.j]
-                {
-                    dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
-                    let mut next_route = r.clone();
-                    next_route.push(next);
-                    Q.push_back((next, next_route));
+            let dest = input.destinations[dest_idx];
+            let mut Q = VecDeque::new();
+            Q.push_back((current, vec![current]));
+            let mut dist = vec![vec![INF; input.N]; input.N];
+            dist[current.i][current.j] = 0;
+            let mut route = vec![];
+
+            while let Some((pos, r)) = Q.pop_front() {
+                if pos == dest {
+                    route = r;
+                    break;
                 }
-            }
-            for dij in DIJ4.iter() {
-                let mut before = pos;
-                let mut next = pos + *dij;
-                loop {
-                    if !next.in_map(input.N) || block[next.i][next.j] {
-                        next = before;
-                        break;
+                for dij in DIJ4.iter() {
+                    let next = pos + *dij;
+                    if next.in_map(input.N)
+                        && dist[pos.i][pos.j] + 1 < dist[next.i][next.j]
+                        && !block[next.i][next.j]
+                    {
+                        dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
+                        let mut next_route = r.clone();
+                        next_route.push(next);
+                        Q.push_back((next, next_route));
                     }
-                    before = next;
-                    next = next + *dij;
                 }
-                if next.in_map(input.N) && dist[pos.i][pos.j] + 1 < dist[next.i][next.j] {
-                    dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
-                    let mut next_route = r.clone();
-                    next_route.push(next);
-                    Q.push_back((next, next_route));
+                for dij in DIJ4.iter() {
+                    let mut before = pos;
+                    let mut next = pos + *dij;
+                    loop {
+                        if !next.in_map(input.N) || block[next.i][next.j] {
+                            next = before;
+                            break;
+                        }
+                        before = next;
+                        next = next + *dij;
+                    }
+                    if next.in_map(input.N) && dist[pos.i][pos.j] + 1 < dist[next.i][next.j] {
+                        dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
+                        let mut next_route = r.clone();
+                        next_route.push(next);
+                        Q.push_back((next, next_route));
+                    }
                 }
             }
-        }
 
-        let mut actions = vec![];
-        for i in 0..route.len() - 1 {
-            let action = compute_action(route[i], route[i + 1]);
-            if rng.gen_bool(0.1) {
-                let dir = rng.gen_range(0..4);
-                let next = route[i] + DIJ4[dir];
-                if next.in_map(input.N)
-                    && !block[next.i][next.j]
-                    && map[next.i][next.j] == -1
-                    && action.1 != DIR[dir]
-                {
-                    actions.push(("A".to_string(), DIR[dir].to_string()));
-                    block[next.i][next.j] = true;
-                }
+            let mut actions = vec![];
+            if route.len() < 2 {
+                continue 'outer;
             }
-            actions.push(action);
+            for i in 0..route.len() - 1 {
+                let action = compute_action(route[i], route[i + 1]);
+                if rng.gen_bool(0.1) {
+                    let dir = rng.gen_range(0..4);
+                    let next = route[i] + DIJ4[dir];
+                    if next.in_map(input.N)
+                        && !block[next.i][next.j]
+                        && map[next.i][next.j] == -1
+                        && action.1 != DIR[dir]
+                    {
+                        actions.push(("A".to_string(), DIR[dir].to_string()));
+                        block[next.i][next.j] = true;
+                    }
+                }
+                actions.push(action);
+            }
+            ans.push(actions);
+            map[dest.i][dest.j] = -1;
         }
-        ans.push(actions);
-        routes.push(route);
-        map[dest.i][dest.j] = -1;
+        let T = ans.iter().flatten().count();
+        let score = input.M + 2 * input.M * input.N - T;
+        if score > best_score {
+            best_score = score;
+            best_ans = ans;
+        }
     }
-    let T = ans.iter().flatten().count();
-    let score = input.M + 2 * input.M * input.N - T;
-    eprintln!("Score = {}", score);
-    output(&ans);
+    output(&best_ans);
 }
 
 fn main() {
