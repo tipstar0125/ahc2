@@ -30,6 +30,9 @@ fn solve(input: &Input) {
             map[pos.i][pos.j] = i as i32;
         }
 
+        let start_block_ratio = 0.2;
+        let end_block_ratio = 0.01;
+
         for dest_idx in 0..input.M - 1 {
             if dest_idx != 0 {
                 current = input.destinations[dest_idx - 1];
@@ -84,7 +87,10 @@ fn solve(input: &Input) {
             }
             for i in 0..route.len() - 1 {
                 let action = compute_action(route[i], route[i + 1]);
-                if rng.gen_bool(0.1) {
+                let block_ratio = start_block_ratio
+                    + (end_block_ratio - start_block_ratio)
+                        * (dest_idx as f64 / (input.M - 1) as f64);
+                if rng.gen_bool(block_ratio) {
                     let dir = rng.gen_range(0..4);
                     let next = route[i] + DIJ4[dir];
                     if next.in_map(input.N)
