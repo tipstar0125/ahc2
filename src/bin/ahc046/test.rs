@@ -12,10 +12,6 @@ mod tests {
     #[derive(Debug, Serialize, Deserialize)]
     struct Result {
         test_number: String,
-        // TODO
-        M: usize,
-        L: usize,
-        W: usize,
         score: usize,
         elapsed_time: f64,
         is_ac: bool,
@@ -30,11 +26,10 @@ mod tests {
                 result += "/TLE";
             }
 
-            // TODO
             write!(
                 f,
-                "{},{},{},{},{},{},{}",
-                self.test_number, self.M, self.L, self.W, self.score, self.elapsed_time, result
+                "{},{},{},{}",
+                self.test_number, self.score, self.elapsed_time, result
             )?;
             Ok(())
         }
@@ -93,39 +88,19 @@ mod tests {
         // run + visualize
         // exp: makers run ahc038 0000
         let run_output = Command::new("makers")
-            .args(["interactive", exe_filename, test_number.as_str()])
+            .args(["run", exe_filename, test_number.as_str()])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .unwrap();
 
         // 標準エラー出力よりスコアと実行時間を取得
-        let mut score = 0;
         let mut elapsed_time = 0.0;
-
-        // TODO
-        let mut M = 0;
-        let mut L = 0;
-        let mut W = 0;
 
         let binding = String::from_utf8_lossy(&run_output.stderr);
         for line in binding.split("\n") {
-            if line.starts_with("Score = ") {
-                score = parse_int(line, "Score = ");
-            }
             if line.starts_with("Elapsed time = ") {
                 elapsed_time = parse_float(line, "Elapsed time = ");
-            }
-
-            // TODO
-            if line.starts_with("M = ") {
-                M = parse_int(line, "M = ");
-            }
-            if line.starts_with("L = ") {
-                L = parse_int(line, "L = ");
-            }
-            if line.starts_with("W = ") {
-                W = parse_int(line, "W = ");
             }
         }
 
@@ -142,16 +117,13 @@ mod tests {
 
         // TODO
         println!(
-            "{}: M={}, L={}, W={}, score={}, elapsed={}, delta={}",
+            "{}: score={}, elapsed={}, delta={}",
             // if vis_score == score {
             if vis_score > 0 {
                 test_number.to_string().green()
             } else {
                 test_number.to_string().red()
             },
-            M,
-            L,
-            W,
             vis_score,
             if elapsed_time > TLE {
                 elapsed_time.to_string().yellow()
@@ -170,9 +142,6 @@ mod tests {
 
         Result {
             test_number,
-            M,
-            L,
-            W,
             score: vis_score,
             elapsed_time,
             is_ac: vis_score > 0,
@@ -211,8 +180,7 @@ mod tests {
         writeln!(json_file, "{}", serde_json::to_string(&results).unwrap()).unwrap();
 
         let mut file = File::create("results.csv").unwrap();
-        // TODO
-        writeln!(file, "{}", "test_num,M,L,W,score,elapsed,result,delta").unwrap();
+        writeln!(file, "{}", "test_num,score,elapsed,result,delta").unwrap();
         let mut score_sum = 0;
         let mut wa_cnt = 0;
         let mut tle_cnt = 0;
