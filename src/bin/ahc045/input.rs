@@ -1,5 +1,7 @@
 use proconio::input_interactive;
 
+use crate::coord::Coord;
+
 pub fn read_input() -> Input {
     input_interactive! {
         N: usize, // 点の個数(N=800固定)
@@ -15,12 +17,19 @@ pub fn read_input() -> Input {
     eprintln!("L = {}", L);
     eprintln!("W = {}", W);
 
-    #[cfg(feature = "local")]
-    input_interactive! {
-        xy: [(usize, usize); N],
-    }
+    let is_local = std::env::var("ATCODER").and(Ok(false)).unwrap_or(true);
+    let xy = if is_local {
+        input_interactive! {
+            xy: [(usize, usize); N],
+        }
+        xy.into_iter().map(|(x, y)| Coord::new(x, y)).collect()
+    } else {
+        vec![Coord::new(0, 0); N]
+    };
 
     Input {
+        width: 10000,
+        height: 10000,
         N,
         M,
         Q,
@@ -28,11 +37,14 @@ pub fn read_input() -> Input {
         W,
         G,
         range,
+        xy,
     }
 }
 
 #[derive(Debug)]
 pub struct Input {
+    pub width: usize,
+    pub height: usize,
     pub N: usize,
     pub M: usize,
     pub Q: usize,
@@ -40,4 +52,5 @@ pub struct Input {
     pub W: usize,
     pub G: Vec<usize>,
     pub range: Vec<(usize, usize, usize, usize)>,
+    pub xy: Vec<Coord>,
 }
