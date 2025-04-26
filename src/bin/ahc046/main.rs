@@ -19,6 +19,7 @@ fn solve(input: &Input) {
     let mut ans = vec![];
     let mut routes = vec![];
     let mut current = input.start;
+    let block = vec![vec![false; input.N]; input.N];
 
     for dest_idx in 0..input.M - 1 {
         if dest_idx != 0 {
@@ -26,43 +27,68 @@ fn solve(input: &Input) {
         }
         let dest = input.destinations[dest_idx];
         let mut Q = VecDeque::new();
-        Q.push_back(current);
+        Q.push_back((current, vec![current]));
         let mut dist = vec![vec![INF; input.N]; input.N];
         dist[current.i][current.j] = 0;
+        let mut route = vec![];
 
-        while let Some(pos) = Q.pop_front() {
+        while let Some((pos, r)) = Q.pop_front() {
             if pos == dest {
+                route = r;
                 break;
             }
             for dij in DIJ4.iter() {
                 let next = pos + *dij;
                 if next.in_map(input.N) && dist[pos.i][pos.j] + 1 < dist[next.i][next.j] {
                     dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
-                    Q.push_back(next);
+                    let mut next_route = r.clone();
+                    next_route.push(next);
+                    Q.push_back((next, next_route));
                 }
             }
-        }
-        let mut route = vec![];
-        let mut actions = vec![];
-        let mut pos = dest;
-        route.push(pos);
-        while pos != current {
             for dij in DIJ4.iter() {
-                let next = pos + *dij;
-                if next.in_map(input.N) && dist[pos.i][pos.j] == dist[next.i][next.j] + 1 {
-                    route.push(next);
-                    actions.push(compute_action(next, pos));
-                    pos = next;
-                    break;
+                let mut before = pos;
+                let mut next = pos + *dij;
+                loop {
+                    if !next.in_map(input.N) || block[next.i][next.j] {
+                        next = before;
+                        break;
+                    }
+                    before = next;
+                    next = next + *dij;
+                }
+                if next.in_map(input.N) && dist[pos.i][pos.j] + 1 < dist[next.i][next.j] {
+                    dist[next.i][next.j] = dist[pos.i][pos.j] + 1;
+                    let mut next_route = r.clone();
+                    next_route.push(next);
+                    Q.push_back((next, next_route));
                 }
             }
         }
-        route.reverse();
-        actions.reverse();
+        // for row in dist {
+        //     for x in row {
+        //         if x == INF {
+        //             eprint!("X ");
+        //         } else {
+        //             eprint!("{} ", x);
+        //         }
+        //     }
+        //     eprintln!();
+        // }
+        // eprintln!("{:?}", route);
+
+        let mut actions = vec![];
+        for i in 0..route.len() - 1 {
+            actions.push(compute_action(route[i], route[i + 1]));
+        }
+        // eprintln!("{}", actions.join("\n"));
         ans.push(actions);
         routes.push(route);
     }
-    output(&ans, &routes);
+    let T = ans.iter().flatten().count();
+    let score = input.M + 2 * input.M * input.N - T;
+    eprintln!("Score = {}", score);
+    output(&ans);
 }
 
 fn main() {
@@ -72,27 +98,40 @@ fn main() {
     eprintln!("Elapsed time = {:.3}", get_time());
 }
 
-fn output(ans: &Vec<Vec<String>>, routes: &Vec<Vec<Coord>>) {
-    for (actions, route) in ans.iter().zip(routes.iter()) {
-        eprintln!("{:?}", route);
+fn output(ans: &Vec<Vec<String>>) {
+    for actions in ans.iter() {
         for action in actions.iter() {
-            println!("M {}", action);
+            println!("{}", action);
         }
     }
 }
 
 fn compute_action(pos0: Coord, pos1: Coord) -> String {
+    let mut res = String::new();
     if pos0.i == pos1.i {
-        if pos0.j < pos1.j {
-            "R".to_string()
+        let d = (pos1.j as i32 - pos0.j as i32).abs();
+        if d > 1 {
+            res += "S ";
         } else {
-            "L".to_string()
+            res += "M ";
+        }
+        if pos0.j < pos1.j {
+            res += "R";
+        } else {
+            res += "L";
         }
     } else {
-        if pos0.i < pos1.i {
-            "D".to_string()
+        let d = (pos1.i as i32 - pos0.i as i32).abs();
+        if d > 1 {
+            res += "S ";
         } else {
-            "U".to_string()
+            res += "M ";
+        }
+        if pos0.i < pos1.i {
+            res += "D";
+        } else {
+            res += "U";
         }
     }
+    res
 }

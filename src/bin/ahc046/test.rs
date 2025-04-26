@@ -118,8 +118,7 @@ mod tests {
         // TODO
         println!(
             "{}: score={}, elapsed={}, delta={}",
-            // if vis_score == score {
-            if vis_score > 0 {
+            if vis_score > 1 {
                 test_number.to_string().green()
             } else {
                 test_number.to_string().red()
@@ -133,7 +132,7 @@ mod tests {
             if delta_score == 0 {
                 delta_score.to_string().white()
             // TODO
-            } else if delta_score < 0 {
+            } else if delta_score > 0 {
                 delta_score.to_string().green()
             } else {
                 delta_score.to_string().red()
