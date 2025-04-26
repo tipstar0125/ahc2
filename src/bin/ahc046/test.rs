@@ -197,7 +197,7 @@ mod tests {
         }
         let total = format!(
             "score sum: {}/{:.3}(log), WA: {}/{}, TLE: {}/{}",
-            score_sum,
+            score_sum * 3,
             (score_sum as f64).log2(),
             wa_cnt,
             test_case_num,
