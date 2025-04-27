@@ -65,93 +65,96 @@ impl Estimator {
             // 誤差が大きい順に基準座標を選択し、クエリの重複がないように3点を選択
             let mut rng = Pcg64Mcg::new(100);
             let delta = 100; // 3点目の座標の誤差範囲
-            let ratio_lower_threshold = 0.99;
-            let ratio_upper_threshold = 1.01;
             let mut used = FxHashSet::default();
-            let mut used_cnt = vec![0; input.N];
 
             for &(_, base_idx) in sorted_points.iter() {
+                let mut points = vec![base_idx];
                 'outer: loop {
-                    let second_idx = rng.gen_range(0..input.N);
-                    if base_idx == second_idx {
+                    // 1点しかない場合はランダムで2点目を選択
+                    if points.len() == 1 {
+                        let second_idx = rng.gen_range(0..input.N);
+                        if base_idx == second_idx {
+                            continue;
+                        }
+                        points.push(second_idx);
+                    }
+
+                    // 3点目以降の点座標の候補
+                    let mut coord_center_cand = vec![];
+                    for i in 0..points.len() {
+                        for j in 0..points.len() {
+                            if i == j {
+                                continue;
+                            }
+                            coord_center_cand
+                                .push(rotate_120deg(xy_center[points[i]], xy_center[points[j]]));
+                        }
+                    }
+                    let coord_center_cand = coord_center_cand
+                        .into_iter()
+                        .filter(|coord| coord.is_some())
+                        .map(|coord| coord.unwrap())
+                        .sorted()
+                        .dedup()
+                        .collect::<Vec<_>>();
+                    if coord_center_cand.is_empty() {
+                        points.pop();
                         continue;
                     }
-                    let base_coord = xy_center[base_idx];
-                    let second_coord = xy_center[second_idx];
-                    let dist0 = calc_dist(base_coord, second_coord);
-                    let third_coord_center = {
-                        let cand1_coord = rotate_120deg(base_coord, second_coord);
-                        let cand2_coord = rotate_120deg(base_coord, second_coord);
-                        if cand1_coord.is_some() {
-                            cand1_coord
-                        } else if cand2_coord.is_some() {
-                            cand2_coord
-                        } else {
-                            None
-                        }
-                    };
-                    if third_coord_center.is_none() {
-                        continue;
+
+                    let mut cand = vec![];
+                    for next_coord_center in coord_center_cand.iter() {
+                        let x_lower = next_coord_center.x.saturating_sub(delta / 2);
+                        let x_upper = (next_coord_center.x + delta / 2).min(10000);
+                        let y_lower = next_coord_center.y.saturating_sub(delta / 2);
+                        let y_upper = (next_coord_center.y + delta / 2).min(10000);
+                        assert!(x_lower <= x_upper);
+                        assert!(y_lower <= y_upper);
+                        let x_range = x_positions.range(x_lower..=x_upper);
+                        let y_range = y_positions.range(y_lower..=y_upper);
+                        let x_range_points: FxHashSet<usize> = x_range
+                            .map(|(_, indices)| indices)
+                            .flatten()
+                            .cloned()
+                            .collect();
+                        let y_range_points: FxHashSet<usize> = y_range
+                            .map(|(_, indices)| indices)
+                            .flatten()
+                            .cloned()
+                            .collect();
+                        cand.extend(x_range_points.intersection(&y_range_points));
                     }
-                    let x_lower = third_coord_center.unwrap().x.saturating_sub(delta / 2);
-                    let x_upper = (third_coord_center.unwrap().x + delta / 2).min(10000);
-                    let y_lower = third_coord_center.unwrap().y.saturating_sub(delta / 2);
-                    let y_upper = (third_coord_center.unwrap().y + delta / 2).min(10000);
-                    assert!(x_lower <= x_upper);
-                    assert!(y_lower <= y_upper);
-                    let x_range = x_positions.range(x_lower..=x_upper);
-                    let y_range = y_positions.range(y_lower..=y_upper);
-                    let mut x_range_points = FxHashSet::default();
-                    for (_, indices) in x_range {
-                        for &idx in indices {
-                            x_range_points.insert(idx);
+
+                    'cand_loop: for &next_idx in cand.iter() {
+                        if points.contains(&next_idx) {
+                            continue 'cand_loop;
+                        }
+                        points.push(next_idx);
+
+                        for k in 0..points.len() {
+                            for l in k + 1..points.len() {
+                                let mut idx0 = points[k];
+                                let mut idx1 = points[l];
+                                if idx0 > idx1 {
+                                    std::mem::swap(&mut idx0, &mut idx1);
+                                }
+                                if used.contains(&(idx0, idx1)) {
+                                    points.pop();
+                                    continue 'cand_loop;
+                                }
+                            }
+                        }
+                        for k in 0..points.len() {
+                            for l in k + 1..points.len() {
+                                used.insert((points[k], points[l]));
+                            }
+                        }
+                        if points.len() == input.L {
+                            queries.push(points);
+                            break 'outer;
                         }
                     }
-                    let mut y_range_points = FxHashSet::default();
-                    for (_, indices) in y_range {
-                        for &idx in indices {
-                            y_range_points.insert(idx);
-                        }
-                    }
-                    let cand = x_range_points.intersection(&y_range_points);
-                    for &third_idx in cand {
-                        if base_idx == third_idx || second_idx == third_idx {
-                            continue;
-                        }
-                        let mut points = vec![base_idx, second_idx, third_idx];
-                        points.sort();
-                        if queries.contains(&points) {
-                            continue;
-                        }
-                        if used.contains(&(points[0], points[1]))
-                            || used.contains(&(points[0], points[2]))
-                            || used.contains(&(points[1], points[2]))
-                        {
-                            continue;
-                        }
-                        let third_coord = xy_center[third_idx];
-                        assert!(third_coord.x >= x_lower && third_coord.x <= x_upper);
-                        assert!(third_coord.y >= y_lower && third_coord.y <= y_upper);
-                        let dist1 = calc_dist(base_coord, third_coord);
-                        let dist2 = calc_dist(second_coord, third_coord);
-                        let ratio1 = dist1 as f64 / dist0 as f64;
-                        let ratio2 = dist2 as f64 / dist0 as f64;
-                        if ratio1 < ratio_lower_threshold
-                            || ratio1 > ratio_upper_threshold
-                            || ratio2 < ratio_lower_threshold
-                            || ratio2 > ratio_upper_threshold
-                        {
-                            continue;
-                        }
-                        used.insert((points[0], points[1]));
-                        used.insert((points[0], points[2]));
-                        used.insert((points[1], points[2]));
-                        queries.push(vec![points[0], points[1], points[2]]);
-                        used_cnt[points[0]] += 1;
-                        used_cnt[points[1]] += 1;
-                        used_cnt[points[2]] += 1;
-                        break 'outer;
-                    }
+                    points.pop();
                 }
                 if queries.len() == input.Q {
                     break;
