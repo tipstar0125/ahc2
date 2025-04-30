@@ -4,6 +4,8 @@ use rand_pcg::Pcg64Mcg;
 use crate::{coord::Coord, input::Input};
 
 pub struct Estimator {
+    pub rng: Pcg64Mcg,
+    pub input: Input,
     pub xy: Vec<Coord>,
     pub dist: Vec<Vec<usize>>,
 }
@@ -19,21 +21,26 @@ impl Estimator {
                 dist[j][i] = dist[i][j];
             }
         }
-        Self { xy, dist }
+        Self {
+            rng: Pcg64Mcg::new(100),
+            input: input.clone(),
+            xy,
+            dist,
+        }
     }
-    pub fn query(&self, input: &Input) {
-        let mut rng = Pcg64Mcg::new(100);
-        let nodes_sorted_by_error = (0..input.N)
-            .sorted_by_key(|&i| input.rects[i].long_side())
+    pub fn query(mut self) -> Self {
+        let nodes_sorted_by_error = (0..self.input.N)
+            .sorted_by_key(|&i| self.input.rects[i].long_side())
             .rev()
-            .take(input.Q)
+            .take(self.input.Q)
             .collect_vec();
 
         for &first_node_idx in nodes_sorted_by_error.iter() {
             let mut query_nodes = vec![first_node_idx];
-            get_query_nodes(&mut query_nodes, input, &mut rng);
+            get_query_nodes(&mut query_nodes, &self.input, &mut self.rng);
             //     println!("? {} {}", query_nodes.len(), query_nodes.iter().join(" "));
         }
+        self
     }
 }
 

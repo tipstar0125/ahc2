@@ -51,7 +51,7 @@ pub fn read_input(is_local: bool) -> Input {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Input {
     pub width: usize,
     pub height: usize,

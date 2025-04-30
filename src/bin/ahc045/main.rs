@@ -18,8 +18,7 @@ mod test;
 const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
-    let mut estimator = Estimator::new(&input);
-    estimator.query(input);
+    let estimator = Estimator::new(&input).query();
 
     let mut dist = vec![vec![0.0; input.N]; input.N];
     for i in 0..input.N {
