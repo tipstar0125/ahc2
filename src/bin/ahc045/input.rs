@@ -1,23 +1,23 @@
+use crate::rectangle::Rect;
 use proconio::input_interactive;
 
 use crate::coord::Coord;
 
-pub fn read_input() -> Input {
+pub fn read_input(is_local: bool) -> Input {
     input_interactive! {
-        N: usize, // 点の個数(N=800固定)
-        M: usize, // グループ個数(M=1-400可変)
-        Q: usize, // クエリ個数(Q=400固定)
-        L: usize, // クエリの際、指定できる点の最大個数(L=3-15可変)
-        W: usize, // 点の座標が含まれる長方形の幅や高さとして有り得る最大値(W=500-2500可変)
-        G: [usize; M], // 各グループに含まれるべき点の個数、総和はN
-        range: [(usize, usize, usize, usize); N], // 各点の座標が含まれる長方形の座標情報(lx, rx, ly, ry)、点の座標はxyともに0-10000の範囲
+        N: usize,
+        M: usize,
+        Q: usize,
+        L: usize,
+        W: usize,
+        G: [usize; M],
+        range: [(usize, usize, usize, usize); N],
     }
 
     eprintln!("M = {}", M);
     eprintln!("L = {}", L);
     eprintln!("W = {}", W);
 
-    let is_local = std::env::var("ATCODER").and(Ok(false)).unwrap_or(true);
     let xy = if is_local {
         input_interactive! {
             xy: [(usize, usize); N],
@@ -26,6 +26,16 @@ pub fn read_input() -> Input {
     } else {
         vec![Coord::new(0, 0); N]
     };
+
+    let rects: Vec<Rect> = range
+        .iter()
+        .map(|(lx, rx, ly, ry)| Rect {
+            x_min: *lx,
+            x_max: *rx,
+            y_min: *ly,
+            y_max: *ry,
+        })
+        .collect();
 
     Input {
         width: 10000,
@@ -36,7 +46,7 @@ pub fn read_input() -> Input {
         L,
         W,
         G,
-        range,
+        rects,
         xy,
     }
 }
@@ -51,6 +61,6 @@ pub struct Input {
     pub L: usize,
     pub W: usize,
     pub G: Vec<usize>,
-    pub range: Vec<(usize, usize, usize, usize)>,
+    pub rects: Vec<Rect>,
     pub xy: Vec<Coord>,
 }

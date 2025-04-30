@@ -5,7 +5,12 @@ use proconio::input_interactive;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{common::get_time, coord::Coord, dsu::UnionFind, input::Input};
+use crate::{
+    common::get_time,
+    coord::{calc_dist2, Coord},
+    dsu::UnionFind,
+    input::Input,
+};
 
 #[derive(Clone)]
 pub struct CutTree {
@@ -53,10 +58,10 @@ impl CutTree {
         let mut count_appear = vec![vec![0; input.N]; input.N];
 
         let mut delta = input
-            .rects
+            .range
             .iter()
             .enumerate()
-            .map(|(i, rect)| (rect.long_side(), i))
+            .map(|(i, (lx, rx, ly, ry))| ((rx - lx).max(ry - ly), i))
             .collect::<Vec<_>>();
         delta.sort();
         delta.reverse();
@@ -111,7 +116,11 @@ impl CutTree {
             }
         }
 
-        let xy_center = input.rects.iter().map(|rect| rect.center()).collect_vec();
+        let xy_center = input
+            .range
+            .iter()
+            .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
+            .collect_vec();
 
         let mut dist = vec![vec![0.0; input.N]; input.N];
         for i in 0..input.N {
@@ -126,7 +135,7 @@ impl CutTree {
                 } else {
                     count_included[i][j] as f64 / count_appear[i][j] as f64
                 };
-                let d = coord_i.euclidean_dist(coord_j) as f64;
+                let d = (calc_dist2(coord_i, coord_j) as f64).sqrt();
                 dist[i][j] = d - score * 100000000.0;
             }
         }
@@ -134,14 +143,14 @@ impl CutTree {
     }
     pub fn cut(&mut self, input: &Input) {
         let xy_center = input
-            .rects
+            .range
             .iter()
-            .map(|rect| rect.center())
+            .map(|(lx, rx, ly, ry)| Coord::new((lx + rx) / 2, (ly + ry) / 2))
             .collect::<Vec<Coord>>();
         let mut dist = vec![vec![0.0; input.N]; input.N];
         for i in 0..input.N {
             for j in i + 1..input.N {
-                dist[i][j] = xy_center[i].euclidean_dist(xy_center[j]) as f64;
+                dist[i][j] = calc_dist2(xy_center[i], xy_center[j]) as f64;
                 dist[j][i] = dist[i][j];
             }
         }
