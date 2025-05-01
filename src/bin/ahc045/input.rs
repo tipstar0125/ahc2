@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::rectangle::Rect;
 use proconio::input_interactive;
 
@@ -37,6 +39,13 @@ pub fn read_input(is_local: bool) -> Input {
         })
         .collect();
 
+    let mut x_positions = BTreeMap::default();
+    let mut y_positions = BTreeMap::default();
+    for i in 0..N {
+        x_positions.entry(xy[i].x).or_insert(vec![]).push(i);
+        y_positions.entry(xy[i].y).or_insert(vec![]).push(i);
+    }
+
     Input {
         width: 10000,
         height: 10000,
@@ -48,6 +57,8 @@ pub fn read_input(is_local: bool) -> Input {
         G,
         rects,
         xy,
+        x_positions,
+        y_positions,
     }
 }
 
@@ -63,4 +74,6 @@ pub struct Input {
     pub G: Vec<usize>,
     pub rects: Vec<Rect>,
     pub xy: Vec<Coord>,
+    pub x_positions: BTreeMap<usize, Vec<usize>>,
+    pub y_positions: BTreeMap<usize, Vec<usize>>,
 }
