@@ -39,13 +39,18 @@ impl Estimator {
             inequalities: vec![],
         }
     }
-    pub fn query(mut self) -> Self {
+    pub fn triangle_query(&mut self) {
         let nodes_sorted_by_error = (0..self.input.N)
             .sorted_by_key(|&i| self.input.rects[i].long_side())
             .rev()
             .collect_vec();
 
-        let mut used_cnt = vec![0; self.input.N];
+        let mut used_cnt = self
+            .input
+            .rects
+            .iter()
+            .map(|rect| -(rect.long_side() as isize / 1000))
+            .collect_vec();
 
         for &first_node_idx in nodes_sorted_by_error.iter() {
             let mut query_nodes = vec![first_node_idx];
@@ -74,9 +79,8 @@ impl Estimator {
                 break;
             }
         }
-        self
     }
-    pub fn get_inequality(mut self) -> Self {
+    pub fn get_inequality(&mut self) {
         for (nodes, uv) in self.queries.iter().zip(self.mst_edges.iter()) {
             let nodes = nodes.iter().cloned().collect::<Vec<_>>();
 
@@ -103,10 +107,8 @@ impl Estimator {
 
         self.inequalities.sort();
         self.inequalities.dedup();
-
-        self
     }
-    pub fn climbing(mut self, TLE: f64) -> Self {
+    pub fn climbing(&mut self, TLE: f64) {
         let mut true_dist = vec![vec![0; self.input.N]; self.input.N];
         for i in 0..self.input.N {
             for j in 0..self.input.N {
@@ -254,7 +256,6 @@ impl Estimator {
         eprintln!("updated_cnt = {}", updated_cnt);
         eprintln!("===== finished =====");
         eprintln!();
-        self
     }
     pub fn gibbs_sampling(&mut self, TLE: f64) -> Vec<Vec<f64>> {
         let mut rng = Pcg64Mcg::new(100);
@@ -340,7 +341,7 @@ impl Estimator {
 fn get_query_nodes(
     query_nodes: &mut Vec<usize>,
     used_edges: &mut FxHashSet<(usize, usize)>,
-    used_cnt: &Vec<usize>,
+    used_cnt: &Vec<isize>,
     xy: &Vec<Coord>,
     input: &Input,
     rng: &mut Pcg64Mcg,

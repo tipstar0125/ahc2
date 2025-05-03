@@ -18,11 +18,11 @@ mod test;
 const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
-    let dist = Estimator::new(&input)
-        .query()
-        .get_inequality()
-        .climbing(0.5)
-        .gibbs_sampling(TLE);
+    let mut estimator = Estimator::new(&input);
+    estimator.triangle_query();
+    estimator.get_inequality();
+    estimator.climbing(0.5);
+    let dist = estimator.gibbs_sampling(TLE);
 
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
