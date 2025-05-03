@@ -83,6 +83,113 @@ impl Estimator {
             }
         }
     }
+    pub fn three_node_query(&mut self) {
+        let delta = 100; // 3点目の座標の誤差範囲
+        let mut used = FxHashSet::default();
+        let nodes_sorted_by_error = (0..self.input.N)
+            .sorted_by_key(|&i| self.input.rects[i].long_side())
+            .rev()
+            .collect_vec();
+
+        for &base_idx in nodes_sorted_by_error.iter() {
+            let mut points = vec![base_idx];
+            'outer: loop {
+                // 1点しかない場合はランダムで2点目を選択
+                if points.len() == 1 {
+                    let second_idx = self.rng.gen_range(0..self.input.N);
+                    if base_idx == second_idx {
+                        continue;
+                    }
+                    points.push(second_idx);
+                }
+
+                // 3点目以降の点座標の候補
+                let mut coord_center_cand = vec![];
+                for i in 0..points.len() {
+                    for j in 0..points.len() {
+                        if i == j {
+                            continue;
+                        }
+                        coord_center_cand
+                            .push(self.xy[points[i]].rotate_120deg(self.xy[points[j]]));
+                    }
+                }
+                let coord_center_cand = coord_center_cand
+                    .into_iter()
+                    .filter(|coord| coord.is_some())
+                    .map(|coord| coord.unwrap())
+                    .sorted()
+                    .dedup()
+                    .collect::<Vec<_>>();
+                if coord_center_cand.is_empty() {
+                    points.pop();
+                    continue;
+                }
+
+                let mut cand = vec![];
+                for next_coord_center in coord_center_cand.iter() {
+                    let x_lower = next_coord_center.x.saturating_sub(delta / 2);
+                    let x_upper = (next_coord_center.x + delta / 2).min(10000);
+                    let y_lower = next_coord_center.y.saturating_sub(delta / 2);
+                    let y_upper = (next_coord_center.y + delta / 2).min(10000);
+                    assert!(x_lower <= x_upper);
+                    assert!(y_lower <= y_upper);
+                    let x_range = self.input.x_positions.range(x_lower..=x_upper);
+                    let y_range = self.input.y_positions.range(y_lower..=y_upper);
+                    let x_range_points: FxHashSet<usize> = x_range
+                        .map(|(_, indices)| indices)
+                        .flatten()
+                        .cloned()
+                        .collect();
+                    let y_range_points: FxHashSet<usize> = y_range
+                        .map(|(_, indices)| indices)
+                        .flatten()
+                        .cloned()
+                        .collect();
+                    cand.extend(x_range_points.intersection(&y_range_points));
+                }
+
+                'cand_loop: for &next_idx in cand.iter() {
+                    if points.contains(&next_idx) {
+                        continue 'cand_loop;
+                    }
+                    points.push(next_idx);
+
+                    for k in 0..points.len() {
+                        for l in k + 1..points.len() {
+                            let mut idx0 = points[k];
+                            let mut idx1 = points[l];
+                            if idx0 > idx1 {
+                                std::mem::swap(&mut idx0, &mut idx1);
+                            }
+                            if used.contains(&(idx0, idx1)) {
+                                points.pop();
+                                continue 'cand_loop;
+                            }
+                        }
+                    }
+                    for k in 0..points.len() {
+                        for l in k + 1..points.len() {
+                            used.insert((points[k], points[l]));
+                        }
+                    }
+                    if points.len() == self.input.L {
+                        println!("? {} {}", points.len(), points.iter().join(" "));
+                        input_interactive! {
+                            uv: [(usize, usize); points.len() - 1],
+                        }
+                        self.mst_edges.push(uv);
+                        self.queries.push(points);
+                        break 'outer;
+                    }
+                }
+                points.pop();
+            }
+            if self.queries.len() == self.input.Q {
+                break;
+            }
+        }
+    }
     pub fn neighbor_query(&mut self) {
         let grid_num = 20;
         let delta = self.input.width / grid_num;
@@ -418,7 +525,7 @@ fn get_query_nodes(
     input: &Input,
     rng: &mut Pcg64Mcg,
 ) -> bool {
-    const MIN_DIST: usize = 0;
+    const MIN_DIST: usize = 1000;
     let n = query_nodes.len();
 
     // クエリの長さがLに達したら終了
@@ -441,7 +548,6 @@ fn get_query_nodes(
             if get_query_nodes(query_nodes, used_edges, used_cnt, xy, input, rng) {
                 return true;
             }
-            query_nodes.pop();
         }
     } else {
         // 正三角形を構成するノードを生成
@@ -490,7 +596,7 @@ fn get_query_nodes(
 }
 
 fn get_neighbor_nodes(coord: Coord, input: &Input) -> Vec<usize> {
-    const RANGE: usize = 200;
+    const RANGE: usize = 500;
     let x_lower = coord.x.saturating_sub(RANGE / 2);
     let x_upper = (coord.x + RANGE / 2).min(10000);
     let y_lower = coord.y.saturating_sub(RANGE / 2);

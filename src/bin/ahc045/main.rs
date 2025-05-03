@@ -19,14 +19,14 @@ const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
     let mut estimator = Estimator::new(&input);
-    if input.L <= 4 {
-        estimator.triangle_query();
+    if input.L == 3 {
+        estimator.three_node_query();
     } else {
         estimator.neighbor_query();
     }
     estimator.get_inequality();
     estimator.climbing(0.5);
-    let dist = estimator.gibbs_sampling(TLE);
+    let dist = estimator.gibbs_sampling(1.0);
 
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
