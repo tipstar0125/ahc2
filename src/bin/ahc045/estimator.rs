@@ -1,16 +1,21 @@
+use std::collections::VecDeque;
+
 use itertools::Itertools;
 use proconio::input_interactive;
+use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 use rustc_hash::FxHashSet;
 
-use crate::{coord::Coord, input::Input};
+use crate::{common::get_time, coord::Coord, input::Input};
 
 pub struct Estimator {
-    pub rng: Pcg64Mcg,
-    pub input: Input,
+    rng: Pcg64Mcg,
+    input: Input,
     pub xy: Vec<Coord>,
     pub dist: Vec<Vec<usize>>,
-    pub mst_edges: Vec<Vec<(usize, usize)>>,
+    queries: Vec<Vec<usize>>,
+    mst_edges: Vec<Vec<(usize, usize)>>,
+    inequalities: Vec<Inequality>,
 }
 
 impl Estimator {
@@ -29,7 +34,9 @@ impl Estimator {
             input: input.clone(),
             xy,
             dist,
+            queries: vec![],
             mst_edges: vec![],
+            inequalities: vec![],
         }
     }
     pub fn query(mut self) -> Self {
@@ -38,7 +45,6 @@ impl Estimator {
             .rev()
             .collect_vec();
 
-        let mut used_mst_edges = FxHashSet::default();
         let mut used_cnt = vec![0; self.input.N];
 
         for &first_node_idx in nodes_sorted_by_error.iter() {
@@ -47,14 +53,12 @@ impl Estimator {
             get_query_nodes(
                 &mut query_nodes,
                 &mut used_edges,
-                &used_mst_edges,
                 &used_cnt,
                 &self.xy,
                 &self.input,
                 &mut self.rng,
             );
             if query_nodes.len() != self.input.L {
-                eprintln!("skip");
                 continue;
             }
             for node_idx in query_nodes.iter() {
@@ -64,30 +68,284 @@ impl Estimator {
             input_interactive! {
                 uv: [(usize, usize); query_nodes.len() - 1],
             }
-            for &(u, v) in uv.iter() {
-                used_mst_edges.insert((u, v));
-                used_mst_edges.insert((v, u));
-            }
             self.mst_edges.push(uv);
+            self.queries.push(query_nodes);
             if self.mst_edges.len() == self.input.Q {
                 break;
             }
         }
-        eprintln!("{}", used_cnt.iter().join(" "));
         self
+    }
+    pub fn get_inequality(mut self) -> Self {
+        for (nodes, uv) in self.queries.iter().zip(self.mst_edges.iter()) {
+            let nodes = nodes.iter().cloned().collect::<Vec<_>>();
+
+            let mut idx_uv = vec![];
+            for &(u, v) in uv.iter() {
+                let u_idx = nodes.iter().position(|&p| p == u).unwrap();
+                let v_idx = nodes.iter().position(|&p| p == v).unwrap();
+                idx_uv.push((u_idx, v_idx));
+            }
+
+            let mut cycles = get_circle_edges(nodes.len(), &idx_uv);
+            for cycle in cycles.iter_mut() {
+                for edge in cycle.iter_mut() {
+                    to_node_idx(edge, &nodes);
+                }
+            }
+            for cycle in cycles.iter() {
+                let long = cycle[0];
+                for &short in cycle.iter().skip(1) {
+                    self.inequalities.push(Inequality::new(short, long));
+                }
+            }
+        }
+
+        self.inequalities.sort();
+        self.inequalities.dedup();
+
+        self
+    }
+    pub fn climbing(mut self, TLE: f64) -> Self {
+        let mut true_dist = vec![vec![0; self.input.N]; self.input.N];
+        for i in 0..self.input.N {
+            for j in 0..self.input.N {
+                true_dist[i][j] = self.input.xy[i].euclidean_dist(self.input.xy[j]);
+            }
+        }
+
+        let mut before_dist_diff = 0;
+        for i in 0..self.input.N {
+            for j in i + 1..self.input.N {
+                before_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
+                    true_dist[i][j] - self.dist[i][j]
+                } else {
+                    self.dist[i][j] - true_dist[i][j]
+                };
+            }
+        }
+
+        let before_ineq_error_num = self
+            .inequalities
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+
+        let deltas = self
+            .input
+            .rects
+            .iter()
+            .map(|rect| {
+                (
+                    (rect.x_max - rect.x_min) as f64,
+                    (rect.y_max - rect.y_min) as f64,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let mut rng = Pcg64Mcg::new(100);
+        let mut iter = 0;
+        let mut updated_cnt = 0;
+        let ineq_num = self.inequalities.len();
+        let start_learning_rate = 0.1;
+        let end_learning_rate = 0.02;
+
+        loop {
+            let elapsed_time = get_time();
+            if elapsed_time > TLE {
+                break;
+            }
+
+            let learning_rate = start_learning_rate
+                + (end_learning_rate - start_learning_rate) * elapsed_time / TLE;
+
+            iter += 1;
+            let idx = rng.gen_range(0..ineq_num);
+            if !self.inequalities[idx].is_error_by_dist(&self.dist) {
+                continue;
+            }
+
+            if rng.gen_bool(0.5) {
+                self.inequalities[idx].swap_short_nodes();
+            }
+            if rng.gen_bool(0.5) {
+                self.inequalities[idx].swap_long_nodes();
+            }
+
+            let ineq = &self.inequalities[idx];
+
+            // short
+            let (dx, dy) = ineq.calc_gradient_short(&self.xy, &self.dist);
+            let (dx, dy) = (
+                dx * deltas[ineq.short.0].0 * learning_rate,
+                dy * deltas[ineq.short.0].1 * learning_rate,
+            );
+            let x = (self.xy[ineq.short.0].x as f64 + dx).clamp(
+                self.input.rects[ineq.short.0].x_min as f64,
+                self.input.rects[ineq.short.0].x_max as f64,
+            ) as usize;
+            let y = (self.xy[ineq.short.0].y as f64 + dy).clamp(
+                self.input.rects[ineq.short.0].y_min as f64,
+                self.input.rects[ineq.short.0].y_max as f64,
+            ) as usize;
+            self.xy[ineq.short.0] = Coord::new(x, y);
+
+            // long
+            let (dx, dy) = ineq.calc_gradient_long(&self.xy, &self.dist);
+            let (dx, dy) = (
+                dx * deltas[ineq.long.0].0 * learning_rate,
+                dy * deltas[ineq.long.0].1 * learning_rate,
+            );
+            let x = (self.xy[ineq.long.0].x as f64 + dx).clamp(
+                self.input.rects[ineq.long.0].x_min as f64,
+                self.input.rects[ineq.long.0].x_max as f64,
+            ) as usize;
+            let y = (self.xy[ineq.long.0].y as f64 + dy).clamp(
+                self.input.rects[ineq.long.0].y_min as f64,
+                self.input.rects[ineq.long.0].y_max as f64,
+            ) as usize;
+
+            self.xy[ineq.long.0] = Coord::new(x, y);
+
+            for i in 0..self.input.N {
+                self.dist[ineq.short.0][i] = self.xy[ineq.short.0].euclidean_dist(self.xy[i]);
+                self.dist[i][ineq.short.0] = self.dist[ineq.short.0][i];
+                self.dist[ineq.long.0][i] = self.xy[ineq.long.0].euclidean_dist(self.xy[i]);
+                self.dist[i][ineq.long.0] = self.dist[ineq.long.0][i];
+            }
+            updated_cnt += 1;
+        }
+
+        let mut after_dist_diff = 0;
+        for i in 0..self.input.N {
+            for j in i + 1..self.input.N {
+                after_dist_diff += if true_dist[i][j] >= self.dist[i][j] {
+                    true_dist[i][j] - self.dist[i][j]
+                } else {
+                    self.dist[i][j] - true_dist[i][j]
+                };
+            }
+        }
+
+        eprintln!("===== Estimate by inequalities =====");
+        eprintln!("before dist diff = {}", before_dist_diff);
+        eprintln!("after  dist diff = {}", after_dist_diff);
+        eprintln!(
+            "improve rate: {}",
+            after_dist_diff as f64 / before_dist_diff as f64
+        );
+        eprintln!(
+            "before ineq: {}/{}",
+            before_ineq_error_num,
+            self.inequalities.len()
+        );
+        let after_ineq_error_num = self
+            .inequalities
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+        eprintln!(
+            "after ineq: {}/{}",
+            after_ineq_error_num,
+            self.inequalities.len()
+        );
+
+        eprintln!("iter = {}", iter);
+        eprintln!("updated_cnt = {}", updated_cnt);
+        eprintln!("===== finished =====");
+        eprintln!();
+        self
+    }
+    pub fn gibbs_sampling(&mut self, TLE: f64) -> Vec<Vec<f64>> {
+        let mut rng = Pcg64Mcg::new(100);
+        let mut dist_sum = self.dist.clone();
+        let best_error_sum = self
+            .inequalities
+            .iter()
+            .filter(|ineq| ineq.is_error_by_dist(&self.dist))
+            .count();
+        let mut ineqs_related_to_node = vec![vec![]; self.input.N];
+        for ineq in self.inequalities.iter() {
+            let mut nodes = vec![ineq.short.0, ineq.short.1, ineq.long.0, ineq.long.1];
+            nodes.sort();
+            nodes.dedup();
+            for &node in nodes.iter() {
+                ineqs_related_to_node[node].push(ineq);
+            }
+        }
+        let mut cnt = 1;
+
+        let start_time = get_time();
+
+        'outer: for _ in 0..50 {
+            let mut xy = self.xy.clone();
+            let mut dist = self.dist.clone();
+            for idx in 0..self.input.N {
+                let before_coord = xy[idx];
+                let before_error_num = ineqs_related_to_node[idx]
+                    .iter()
+                    .filter(|ineq| ineq.is_error_by_dist(&dist))
+                    .count();
+                for _ in 0..2 {
+                    xy[idx] = self.input.rects[idx].random_coord(&mut rng);
+                    for i in 0..self.input.N {
+                        dist[idx][i] = xy[idx].euclidean_dist(xy[i]);
+                        dist[i][idx] = dist[idx][i];
+                    }
+                    let after_error_num = ineqs_related_to_node[idx]
+                        .iter()
+                        .filter(|ineq| ineq.is_error_by_dist(&dist))
+                        .count();
+                    if before_error_num < after_error_num {
+                        xy[idx] = before_coord;
+                        for i in 0..self.input.N {
+                            dist[idx][i] = xy[idx].euclidean_dist(xy[i]);
+                            dist[i][idx] = dist[idx][i];
+                        }
+                    } else {
+                        break;
+                    }
+                    if get_time() > TLE {
+                        break 'outer;
+                    }
+                }
+            }
+            self.xy = xy;
+            for i in 0..self.input.N {
+                for j in 0..self.input.N {
+                    dist_sum[i][j] += dist[i][j];
+                    self.dist[i][j] = dist[i][j];
+                }
+            }
+            cnt += 1;
+        }
+        let mut expected_dist = vec![vec![0.0; self.input.N]; self.input.N];
+        for i in 0..self.input.N {
+            for j in 0..self.input.N {
+                expected_dist[i][j] = dist_sum[i][j] as f64 / cnt as f64;
+            }
+        }
+
+        eprintln!("===== Gibbs sampling =====");
+        eprintln!("best_error_sum = {}", best_error_sum);
+        eprintln!("cnt = {}", cnt);
+        let elapsed_time = get_time() - start_time;
+        eprintln!("elapsed_time = {}", elapsed_time);
+        eprintln!("===== finished =====");
+        eprintln!();
+        expected_dist
     }
 }
 
 fn get_query_nodes(
     query_nodes: &mut Vec<usize>,
     used_edges: &mut FxHashSet<(usize, usize)>,
-    used_mst_edges: &FxHashSet<(usize, usize)>,
     used_cnt: &Vec<usize>,
     xy: &Vec<Coord>,
     input: &Input,
     rng: &mut Pcg64Mcg,
 ) -> bool {
-    const MIN_DIST: usize = 1000;
+    const MIN_DIST: usize = 0;
     let n = query_nodes.len();
 
     // クエリの長さがLに達したら終了
@@ -102,24 +360,12 @@ fn get_query_nodes(
             if query_nodes.contains(&second_node_idx) {
                 continue;
             }
-            // 既にクエリでMSTの辺と判定された辺はクエリには含まない
-            if used_mst_edges.contains(&(query_nodes[0], second_node_idx)) {
-                continue;
-            }
             let dist = xy[query_nodes[0]].euclidean_dist(xy[second_node_idx]);
             if dist < MIN_DIST {
                 continue;
             }
             query_nodes.push(second_node_idx);
-            if get_query_nodes(
-                query_nodes,
-                used_edges,
-                used_mst_edges,
-                used_cnt,
-                xy,
-                input,
-                rng,
-            ) {
+            if get_query_nodes(query_nodes, used_edges, used_cnt, xy, input, rng) {
                 return true;
             }
             query_nodes.pop();
@@ -148,27 +394,13 @@ fn get_query_nodes(
                         if query_nodes.contains(&node) {
                             continue;
                         }
-                        // 既にクエリでMSTの辺と判定された辺はクエリには含まない
-                        if used_mst_edges.contains(&(query_nodes[i], node))
-                            || used_mst_edges.contains(&(query_nodes[j], node))
-                        {
-                            continue;
-                        }
                         // 同じような位置にあるノードはクエリに含めない(全てのノードから一定距離以上離れていること)
                         if (0..n)
                             .into_iter()
                             .all(|k| xy[query_nodes[k]].euclidean_dist(xy[node]) >= MIN_DIST)
                         {
                             query_nodes.push(node);
-                            if get_query_nodes(
-                                query_nodes,
-                                used_edges,
-                                used_mst_edges,
-                                used_cnt,
-                                xy,
-                                input,
-                                rng,
-                            ) {
+                            if get_query_nodes(query_nodes, used_edges, used_cnt, xy, input, rng) {
                                 return true;
                             }
                             query_nodes.pop();
@@ -185,26 +417,197 @@ fn get_query_nodes(
 }
 
 fn get_neighbor_nodes(coord: Coord, input: &Input) -> Vec<usize> {
-    const RANGE: usize = 1000;
+    const RANGE: usize = 200;
     let x_lower = coord.x.saturating_sub(RANGE / 2);
     let x_upper = (coord.x + RANGE / 2).min(10000);
     let y_lower = coord.y.saturating_sub(RANGE / 2);
     let y_upper = (coord.y + RANGE / 2).min(10000);
     let x_range = input.x_positions.range(x_lower..=x_upper);
     let y_range = input.y_positions.range(y_lower..=y_upper);
-    let x_range_points: FxHashSet<usize> = x_range
-        .map(|(_, indices)| indices)
-        .flatten()
-        .cloned()
-        .collect();
-    let y_range_points: FxHashSet<usize> = y_range
-        .map(|(_, indices)| indices)
-        .flatten()
-        .cloned()
-        .collect();
+    let x_range_points: FxHashSet<_> = x_range.map(|(_, indices)| indices).flatten().collect();
+    let y_range_points: FxHashSet<_> = y_range.map(|(_, indices)| indices).flatten().collect();
 
     x_range_points
         .intersection(&y_range_points)
         .cloned()
+        .into_iter()
+        .cloned()
         .collect()
+}
+
+fn get_circle_edges(n: usize, uv: &Vec<(usize, usize)>) -> Vec<Vec<(usize, usize)>> {
+    let mut mst_edges = vec![vec![]; n];
+    let mut not_mst_edges = vec![vec![]; n];
+    for i in 0..n {
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            not_mst_edges[i].push(j);
+        }
+    }
+
+    for &(u, v) in uv.iter() {
+        mst_edges[u].push(v);
+        mst_edges[v].push(u);
+
+        let remove_v_idx = not_mst_edges[u].iter().position(|&p| p == v).unwrap();
+        not_mst_edges[u].remove(remove_v_idx);
+        let remove_u_idx = not_mst_edges[v].iter().position(|&p| p == u).unwrap();
+        not_mst_edges[v].remove(remove_u_idx);
+    }
+
+    fn dfs(
+        u: usize,
+        start: usize,
+        next: usize,
+        edges: &Vec<Vec<usize>>,
+        visited: &mut Vec<bool>,
+        parent: &mut Vec<usize>,
+        cycle: &mut Vec<(usize, usize)>,
+    ) -> bool {
+        if u == start {
+            visited[next] = true;
+            cycle.push((u, next));
+            if dfs(next, start, next, edges, visited, parent, cycle) {
+                return true;
+            }
+            cycle.pop();
+        } else {
+            for &v in edges[u].iter() {
+                if !visited[v] {
+                    visited[v] = true;
+                    parent[v] = u;
+                    cycle.push((u, v));
+                    if dfs(v, start, next, edges, visited, parent, cycle) {
+                        return true;
+                    }
+                    cycle.pop();
+                } else if parent[u] != v {
+                    cycle.push((u, v));
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    let mut cycles = vec![];
+
+    for (start, nexts) in not_mst_edges.iter().enumerate() {
+        for &next in nexts.iter() {
+            if start > next {
+                continue;
+            }
+            let mut Q = VecDeque::new();
+            let mut visited = vec![false; n];
+            let mut parent = vec![!0; n];
+            let mut cycle = vec![];
+            Q.push_back(start);
+            visited[start] = true;
+            dfs(
+                start,
+                start,
+                next,
+                &mst_edges,
+                &mut visited,
+                &mut parent,
+                &mut cycle,
+            );
+            cycles.push(cycle);
+        }
+    }
+    cycles
+}
+
+fn to_node_idx(edge: &mut (usize, usize), points: &Vec<usize>) {
+    let mut u = points[edge.0];
+    let mut v = points[edge.1];
+    if u > v {
+        std::mem::swap(&mut u, &mut v);
+    }
+    edge.0 = u;
+    edge.1 = v;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct Inequality {
+    pub short: (usize, usize),
+    pub long: (usize, usize),
+}
+
+impl Inequality {
+    fn new(short: (usize, usize), long: (usize, usize)) -> Self {
+        Self { short, long }
+    }
+    fn is_error_by_dist(&self, dist: &Vec<Vec<usize>>) -> bool {
+        dist[self.short.0][self.short.1] > dist[self.long.0][self.long.1]
+    }
+    fn is_error_by_coord(&self, xy: &Vec<Coord>) -> bool {
+        xy[self.short.0].euclidean_dist(xy[self.short.1])
+            > xy[self.long.0].euclidean_dist(xy[self.long.1])
+    }
+    fn swap_short_nodes(&mut self) {
+        std::mem::swap(&mut self.short.0, &mut self.short.1);
+    }
+    fn swap_long_nodes(&mut self) {
+        std::mem::swap(&mut self.long.0, &mut self.long.1);
+    }
+    fn calc_gradient_short(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
+        let length = dist[self.short.0][self.short.1] as f64;
+        let dx = xy[self.short.1].x as f64 - xy[self.short.0].x as f64;
+        let dy = xy[self.short.1].y as f64 - xy[self.short.0].y as f64;
+        (dx / length, dy / length)
+    }
+    fn calc_gradient_long(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
+        let length = dist[self.long.0][self.long.1] as f64;
+        let dx = xy[self.long.1].x as f64 - xy[self.long.0].x as f64;
+        let dy = xy[self.long.1].y as f64 - xy[self.long.0].y as f64;
+        (-dx / length, -dy / length)
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_circle_edges() {
+        let points = vec![3, 5, 6, 8, 2];
+        let mut uv = vec![];
+        //      3
+        //     / \
+        //    5   6
+        //       / \
+        //      8   2
+        uv.push((3, 5));
+        uv.push((3, 6));
+        uv.push((6, 8));
+        uv.push((6, 2));
+        let mut idx_uv = vec![];
+        for &(u, v) in uv.iter() {
+            let u_idx = points.iter().position(|&p| p == u).unwrap();
+            let v_idx = points.iter().position(|&p| p == v).unwrap();
+            idx_uv.push((u_idx, v_idx));
+        }
+        let mut cycles = get_circle_edges(points.len(), &idx_uv);
+        for cycle in cycles.iter_mut() {
+            for edge in cycle.iter_mut() {
+                to_node_idx(edge, &points);
+            }
+        }
+
+        let mut inequalities = vec![];
+        for cycle in cycles.iter() {
+            let long = cycle[0];
+            for &short in cycle.iter().skip(1) {
+                inequalities.push(Inequality::new(short, long));
+            }
+        }
+        inequalities.sort();
+        inequalities.dedup();
+
+        for row in inequalities.iter() {
+            eprintln!("short = {:?}, long = {:?}", row.short, row.long);
+        }
+    }
 }

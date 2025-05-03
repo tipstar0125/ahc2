@@ -18,18 +18,16 @@ mod test;
 const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
-    let estimator = Estimator::new(&input).query();
+    let dist = Estimator::new(&input)
+        .query()
+        .get_inequality()
+        .climbing(0.5)
+        .gibbs_sampling(TLE);
 
-    let mut dist = vec![vec![0.0; input.N]; input.N];
-    for i in 0..input.N {
-        for j in 0..input.N {
-            dist[i][j] = estimator.dist[i][j] as f64;
-            dist[j][i] = dist[i][j];
-        }
-    }
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);
+    cut_tree.annealing(input, &dist, TLE);
     cut_tree.output(&dist);
 }
 
