@@ -19,7 +19,11 @@ const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
     let mut estimator = Estimator::new(&input);
-    estimator.triangle_query();
+    if input.L <= 4 {
+        estimator.triangle_query();
+    } else {
+        estimator.neighbor_query();
+    }
     estimator.get_inequality();
     estimator.climbing(0.5);
     let dist = estimator.gibbs_sampling(TLE);

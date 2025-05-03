@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, VecDeque},
+};
 
 use itertools::Itertools;
 use proconio::input_interactive;
@@ -77,6 +80,75 @@ impl Estimator {
             self.queries.push(query_nodes);
             if self.mst_edges.len() == self.input.Q {
                 break;
+            }
+        }
+    }
+    pub fn neighbor_query(&mut self) {
+        let grid_num = 20;
+        let delta = self.input.width / grid_num;
+        let grid_centers = (0..=grid_num).map(|i| i * delta).collect::<Vec<_>>();
+
+        for xi in 0..grid_num {
+            for yi in 0..grid_num {
+                let x_lower = grid_centers[xi];
+                let x_upper = grid_centers[xi + 1];
+                let y_lower = grid_centers[yi];
+                let y_upper = grid_centers[yi + 1];
+                let x_range = self.input.x_positions.range(x_lower..=x_upper);
+                let y_range = self.input.y_positions.range(y_lower..=y_upper);
+                let mut x_range_points = FxHashSet::default();
+                for (_, indices) in x_range {
+                    for &idx in indices {
+                        x_range_points.insert(idx);
+                    }
+                }
+                let mut y_range_points = FxHashSet::default();
+                for (_, indices) in y_range {
+                    for &idx in indices {
+                        y_range_points.insert(idx);
+                    }
+                }
+                let mut nodes = x_range_points
+                    .intersection(&y_range_points)
+                    .into_iter()
+                    .sorted_by_key(|&idx| self.input.rects[*idx].long_side())
+                    .rev()
+                    .take(self.input.L)
+                    .cloned()
+                    .collect::<FxHashSet<_>>();
+
+                let mut Q = BinaryHeap::new();
+                let mut dist = vec![1 << 60; self.input.N];
+                for &node in nodes.iter() {
+                    Q.push((Reverse(0), node));
+                    dist[node] = 0;
+                }
+                while let Some((Reverse(d), u)) = Q.pop() {
+                    if nodes.len() == self.input.L {
+                        break;
+                    }
+                    nodes.insert(u);
+                    for v in 0..self.input.N {
+                        if nodes.contains(&v) {
+                            continue;
+                        }
+                        let nd = self.xy[u].euclidean_dist(self.xy[v]);
+                        if d + nd < dist[v] {
+                            dist[v] = d + nd;
+                            Q.push((Reverse(d + nd), v));
+                        }
+                    }
+                }
+                assert!(nodes.is_empty() || nodes.len() == self.input.L);
+                if !nodes.is_empty() {
+                    let query_nodes = nodes.into_iter().collect::<Vec<_>>();
+                    println!("? {} {}", query_nodes.len(), query_nodes.iter().join(" "));
+                    input_interactive! {
+                        uv: [(usize, usize); query_nodes.len() - 1],
+                    }
+                    self.mst_edges.push(uv);
+                    self.queries.push(query_nodes);
+                }
             }
         }
     }
