@@ -19,8 +19,8 @@ const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
     let mut estimator = Estimator::new(&input);
-    if input.L == 3 {
-        estimator.three_node_query();
+    if input.L <= 4 {
+        estimator.triangle_query();
     } else {
         estimator.neighbor_query();
     }

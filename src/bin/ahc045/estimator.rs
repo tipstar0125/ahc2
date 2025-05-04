@@ -525,7 +525,7 @@ fn get_query_nodes(
     input: &Input,
     rng: &mut Pcg64Mcg,
 ) -> bool {
-    const MIN_DIST: usize = 1000;
+    const MIN_DIST: usize = 100;
     let n = query_nodes.len();
 
     // クエリの長さがLに達したら終了
@@ -548,6 +548,7 @@ fn get_query_nodes(
             if get_query_nodes(query_nodes, used_edges, used_cnt, xy, input, rng) {
                 return true;
             }
+            query_nodes.pop();
         }
     } else {
         // 正三角形を構成するノードを生成
@@ -596,7 +597,7 @@ fn get_query_nodes(
 }
 
 fn get_neighbor_nodes(coord: Coord, input: &Input) -> Vec<usize> {
-    const RANGE: usize = 100;
+    const RANGE: usize = 500;
     let x_lower = coord.x.saturating_sub(RANGE / 2);
     let x_upper = (coord.x + RANGE / 2).min(10000);
     let y_lower = coord.y.saturating_sub(RANGE / 2);
