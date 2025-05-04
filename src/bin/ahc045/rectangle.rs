@@ -29,4 +29,45 @@ impl Rect {
         let y = rng.gen_range(self.y_min..=self.y_max);
         Coord { x, y }
     }
+    pub fn min_dist(&self, other: &Rect) -> usize {
+        let dx = if self.x_max < other.x_min {
+            other.x_min - self.x_max
+        } else if other.x_max < self.x_min {
+            self.x_min - other.x_max
+        } else {
+            0
+        };
+
+        let dy = if self.y_max < other.y_min {
+            other.y_min - self.y_max
+        } else if other.y_max < self.y_min {
+            self.y_min - other.y_max
+        } else {
+            0
+        };
+
+        let square_dist = (dx * dx + dy * dy) as f64;
+        let dist = square_dist.sqrt();
+        dist as usize
+    }
+
+    pub fn max_dist(&self, other: &Rect) -> usize {
+        let dx = self
+            .x_min
+            .abs_diff(other.x_min)
+            .max(self.x_min.abs_diff(other.x_max))
+            .max(self.x_max.abs_diff(other.x_min))
+            .max(self.x_max.abs_diff(other.x_max));
+
+        let dy = self
+            .y_min
+            .abs_diff(other.y_min)
+            .max(self.y_min.abs_diff(other.y_max))
+            .max(self.y_max.abs_diff(other.y_min))
+            .max(self.y_max.abs_diff(other.y_max));
+
+        let square_dist = (dx * dx + dy * dy) as f64;
+        let dist = square_dist.sqrt();
+        dist as usize
+    }
 }

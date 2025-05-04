@@ -296,6 +296,10 @@ impl Estimator {
 
         self.inequalities.sort();
         self.inequalities.dedup();
+        eprintln!("inequalities num = {}", self.inequalities.len());
+        self.inequalities
+            .retain(|ineq| !ineq.has_no_error(&self.input));
+        eprintln!("inequalities num = {}", self.inequalities.len());
     }
     pub fn climbing(&mut self, TLE: f64) {
         let mut true_dist = vec![vec![0; self.input.N]; self.input.N];
@@ -754,6 +758,11 @@ impl Inequality {
         let dx = xy[self.long.1].x as f64 - xy[self.long.0].x as f64;
         let dy = xy[self.long.1].y as f64 - xy[self.long.0].y as f64;
         (-dx / length, -dy / length)
+    }
+    fn has_no_error(&self, input: &Input) -> bool {
+        let long_min_dist = input.rects[self.long.0].min_dist(&input.rects[self.long.1]);
+        let short_max_dist = input.rects[self.short.0].max_dist(&input.rects[self.short.1]);
+        short_max_dist < long_min_dist
     }
 }
 #[cfg(test)]
