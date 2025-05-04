@@ -29,7 +29,7 @@ fn solve(input: &Input) {
     estimator.get_inequality();
     estimator.climbing(0.5);
     eprint_yellow(format!("climbing elapsed = {:.3}", get_time()).as_str());
-    let dist = estimator.gibbs_sampling(1.0);
+    let dist = estimator.gibbs_sampling(TLE);
     eprint_yellow(format!("gibbs sampling elapsed = {:.3}", get_time()).as_str());
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
