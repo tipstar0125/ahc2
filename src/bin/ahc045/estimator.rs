@@ -596,7 +596,7 @@ fn get_query_nodes(
 }
 
 fn get_neighbor_nodes(coord: Coord, input: &Input) -> Vec<usize> {
-    const RANGE: usize = 500;
+    const RANGE: usize = 100;
     let x_lower = coord.x.saturating_sub(RANGE / 2);
     let x_upper = (coord.x + RANGE / 2).min(10000);
     let y_lower = coord.y.saturating_sub(RANGE / 2);

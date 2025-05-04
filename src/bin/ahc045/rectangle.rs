@@ -1,10 +1,9 @@
-use std::{cmp::max, collections::HashSet};
+use std::cmp::max;
 
-use itertools::Itertools;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{coord::Coord, dsu::UnionFind};
+use crate::coord::Coord;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
