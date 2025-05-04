@@ -194,6 +194,11 @@ impl Estimator {
         let grid_num = 20;
         let delta = self.input.width / grid_num;
         let grid_centers = (0..=grid_num).map(|i| i * delta).collect::<Vec<_>>();
+        let mut empty_cnt = 0;
+        let nodes_sorted_by_error = (0..self.input.N)
+            .sorted_by_key(|&i| self.input.rects[i].long_side())
+            .rev()
+            .collect_vec();
 
         for xi in 0..grid_num {
             for yi in 0..grid_num {
@@ -223,6 +228,10 @@ impl Estimator {
                     .take(self.input.L)
                     .cloned()
                     .collect::<FxHashSet<_>>();
+                if nodes.is_empty() {
+                    nodes.insert(nodes_sorted_by_error[empty_cnt]);
+                    empty_cnt += 1;
+                }
 
                 let mut Q = BinaryHeap::new();
                 let mut dist = vec![1 << 60; self.input.N];
@@ -260,6 +269,7 @@ impl Estimator {
         }
     }
     pub fn get_inequality(&mut self) {
+        eprintln!("query num = {}", self.queries.len());
         for (nodes, uv) in self.queries.iter().zip(self.mst_edges.iter()) {
             let nodes = nodes.iter().cloned().collect::<Vec<_>>();
 
