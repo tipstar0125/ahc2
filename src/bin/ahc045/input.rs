@@ -39,11 +39,12 @@ pub fn read_input(is_local: bool) -> Input {
         })
         .collect();
 
+    let xy_center = rects.iter().map(|rect| rect.center()).collect::<Vec<_>>();
     let mut x_positions = BTreeMap::default();
     let mut y_positions = BTreeMap::default();
     for i in 0..N {
-        x_positions.entry(xy[i].x).or_insert(vec![]).push(i);
-        y_positions.entry(xy[i].y).or_insert(vec![]).push(i);
+        x_positions.entry(xy_center[i].x).or_insert(vec![]).push(i);
+        y_positions.entry(xy_center[i].y).or_insert(vec![]).push(i);
     }
 
     Input {

@@ -20,13 +20,13 @@ const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
     let mut estimator = Estimator::new(&input);
-    eprint_yellow(format!("estimator init elapsed = {:.3}", get_time()).as_str());
     if input.L == 3 {
         estimator.three_node_query();
     } else {
         estimator.neighbor_query();
     }
     estimator.get_inequality();
+    eprint_yellow(format!("estimator init elapsed = {:.3}", get_time()).as_str());
     estimator.climbing(0.5);
     eprint_yellow(format!("climbing elapsed = {:.3}", get_time()).as_str());
     let dist = estimator.gibbs_sampling(TLE);
