@@ -16,3 +16,16 @@ pub fn get_time() -> f64 {
         }
     }
 }
+
+pub fn eprint_red(message: &str) {
+    eprintln!("\x1b[31m{}\x1b[0m", message);
+}
+pub fn eprint_green(message: &str) {
+    eprintln!("\x1b[32m{}\x1b[0m", message);
+}
+pub fn eprint_yellow(message: &str) {
+    eprintln!("\x1b[33m{}\x1b[0m", message);
+}
+pub fn eprint_blue(message: &str) {
+    eprintln!("\x1b[34m{}\x1b[0m", message);
+}

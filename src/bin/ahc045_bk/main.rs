@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
+use common::eprint_yellow;
 use coord::Coord;
 use cut::CutTree;
 use estimator::Estimator;
@@ -33,12 +34,18 @@ const TLE: f64 = 1.9; // 時間制限
 
 fn solve(input: &Input) -> Vec<Coord> {
     let mut estimator = Estimator::new(&input);
+    eprint_yellow(format!("estimator init elapsed = {:.3}", get_time()).as_str());
     estimator.climbing(&input, 0.5);
+    eprint_yellow(format!("climbing elapsed = {:.3}", get_time()).as_str());
     let dist = estimator.gibbs_sampling(&input, TLE);
+    eprint_yellow(format!("gibbs sampling elapsed = {:.3}", get_time()).as_str());
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
+    eprint_yellow(format!("cut elapsed = {:.3}", get_time()).as_str());
     cut_tree.make_rest(input, &dist);
+    eprint_yellow(format!("make rest elapsed = {:.3}", get_time()).as_str());
     cut_tree.annealing(input, &dist, TLE);
+    eprint_yellow(format!("annealing elapsed = {:.3}", get_time()).as_str());
     cut_tree.output(&dist);
     estimator.xy
 }

@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use crate::{common::get_time, input::read_input};
+use common::eprint_yellow;
 use cut::CutTree;
 use estimator::Estimator;
 use input::Input;
@@ -19,6 +20,7 @@ const TLE: f64 = 1.9;
 
 fn solve(input: &Input) {
     let mut estimator = Estimator::new(&input);
+    eprint_yellow(format!("estimator init elapsed = {:.3}", get_time()).as_str());
     if input.L == 3 {
         estimator.three_node_query();
     } else {
@@ -26,12 +28,16 @@ fn solve(input: &Input) {
     }
     estimator.get_inequality();
     estimator.climbing(0.5);
+    eprint_yellow(format!("climbing elapsed = {:.3}", get_time()).as_str());
     let dist = estimator.gibbs_sampling(1.0);
-
+    eprint_yellow(format!("gibbs sampling elapsed = {:.3}", get_time()).as_str());
     let mut cut_tree = CutTree::new(input, &dist);
     cut_tree.cut(input);
+    eprint_yellow(format!("cut elapsed = {:.3}", get_time()).as_str());
     cut_tree.make_rest(input, &dist);
+    eprint_yellow(format!("make rest elapsed = {:.3}", get_time()).as_str());
     cut_tree.annealing(input, &dist, TLE);
+    eprint_yellow(format!("annealing elapsed = {:.3}", get_time()).as_str());
     cut_tree.output(&dist);
 }
 
