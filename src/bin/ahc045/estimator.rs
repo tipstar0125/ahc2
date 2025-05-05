@@ -18,7 +18,7 @@ pub struct Estimator {
     pub dist: Vec<Vec<usize>>,
     queries: Vec<Vec<usize>>,
     mst_edges: Vec<Vec<(usize, usize)>>,
-    inequalities: Vec<Inequality>,
+    pub inequalities: Vec<Inequality>,
 }
 
 impl Estimator {
@@ -725,7 +725,7 @@ fn to_node_idx(edge: &mut (usize, usize), points: &Vec<usize>) {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Inequality {
+pub struct Inequality {
     pub short: (usize, usize),
     pub long: (usize, usize),
 }
