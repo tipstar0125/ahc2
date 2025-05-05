@@ -27,7 +27,7 @@ fn solve(input: &Input) {
     estimator.get_inequality();
     estimator.climbing(0.5);
     let dist = estimator.gibbs_sampling(TLE);
-    let mut cut_tree = CutTree::new(input, &dist);
+    let mut cut_tree = CutTree::new(input, &dist, &estimator);
     cut_tree.cut(input);
     cut_tree.make_rest(input, &dist);
     cut_tree.annealing(input, &dist, TLE);

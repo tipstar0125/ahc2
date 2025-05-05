@@ -1,21 +1,28 @@
 use std::{cmp::Ordering, collections::VecDeque};
 
 use itertools::Itertools;
-use proconio::input_interactive;
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
+use rustc_hash::FxHashMap;
 
-use crate::{common::get_time, coord::Coord, dsu::UnionFind, input::Input};
+use crate::{
+    common::{eprint_blue, eprint_green, eprint_yellow, get_time},
+    coord::Coord,
+    dsu::UnionFind,
+    estimator::Estimator,
+    input::Input,
+};
 
 #[derive(Clone)]
 pub struct CutTree {
     rng: Pcg64Mcg,
     edges: Vec<Vec<usize>>,
     group: Vec<Vec<usize>>,
+    order_map: FxHashMap<(usize, usize), usize>,
 }
 
 impl CutTree {
-    pub fn new(input: &Input, dist: &Vec<Vec<f64>>) -> Self {
+    pub fn new(input: &Input, dist: &Vec<Vec<f64>>, estimator: &Estimator) -> Self {
         let mut edges = vec![vec![]; input.N];
         let mut cand = vec![];
         for i in 0..input.N {
@@ -28,6 +35,54 @@ impl CutTree {
             }
         }
         cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        let mut order_map = FxHashMap::default();
+        for (i, &(_, u, v)) in cand.iter().enumerate() {
+            order_map.insert((u, v), i);
+        }
+
+        for _ in 0..2 {
+            let mut error_cnt = 0;
+            for ineq in estimator.inequalities.iter() {
+                let mut short_u = ineq.short.0;
+                let mut short_v = ineq.short.1;
+                if short_u > short_v {
+                    std::mem::swap(&mut short_u, &mut short_v);
+                }
+                let mut long_u = ineq.long.0;
+                let mut long_v = ineq.long.1;
+                if long_u > long_v {
+                    std::mem::swap(&mut long_u, &mut long_v);
+                }
+                if order_map.contains_key(&(short_u, short_v))
+                    && order_map.contains_key(&(long_u, long_v))
+                {
+                    let order_short = order_map[&(short_u, short_v)];
+                    let order_long = order_map[&(long_u, long_v)];
+                    if order_short > order_long {
+                        eprint_green(&format!("swap: {} {}", order_short, order_long));
+                        cand.swap(order_short, order_long);
+                        order_map.remove(&(short_u, short_v));
+                        order_map.remove(&(long_u, long_v));
+                        order_map.insert((short_u, short_v), order_long);
+                        order_map.insert((long_u, long_v), order_short);
+                        eprint_yellow(&format!("{:?}", cand[order_short]));
+                        eprint_yellow(&format!("{:?}", cand[order_long]));
+                        error_cnt += 1;
+                    }
+                }
+            }
+            eprint_blue(&format!("error_cnt: {}", error_cnt));
+            if error_cnt == 0 {
+                break;
+            }
+        }
+        let mut order_map_keys = order_map.keys().cloned().collect_vec();
+        order_map_keys.sort();
+        for &(u, v) in order_map_keys.iter() {
+            let order = order_map[&(u, v)];
+            order_map.insert((v, u), order);
+        }
 
         let mut uf = UnionFind::new(input.N);
 
@@ -44,93 +99,8 @@ impl CutTree {
             rng: Pcg64Mcg::new(200),
             edges,
             group: vec![],
+            order_map,
         }
-    }
-    pub fn query(&mut self, input: &Input) -> Vec<Vec<f64>> {
-        let mut visited = vec![0; input.N];
-        let mut bfs_cnt = 0;
-        let mut count_included = vec![vec![0; input.N]; input.N];
-        let mut count_appear = vec![vec![0; input.N]; input.N];
-
-        let mut delta = input
-            .rects
-            .iter()
-            .enumerate()
-            .map(|(i, rect)| (rect.long_side(), i))
-            .collect::<Vec<_>>();
-        delta.sort();
-        delta.reverse();
-        delta.truncate(input.Q);
-
-        for &(_, node_idx) in delta.iter() {
-            let mut Q = VecDeque::new();
-            let mut nodes = vec![];
-            Q.push_back(node_idx);
-            nodes.push(node_idx);
-            bfs_cnt += 1;
-            visited[node_idx] = bfs_cnt;
-
-            while let Some(v) = Q.pop_front() {
-                if nodes.len() >= input.L {
-                    break;
-                }
-                for &u in self.edges[v].iter() {
-                    if visited[u] == bfs_cnt {
-                        continue;
-                    }
-                    visited[u] = bfs_cnt;
-                    nodes.push(u);
-                    Q.push_back(u);
-                }
-            }
-            nodes.truncate(input.L);
-
-            for i in nodes.iter() {
-                for j in nodes.iter() {
-                    if i == j {
-                        continue;
-                    }
-                    count_appear[*i][*j] += 1;
-                }
-            }
-
-            println!("? {} {}", nodes.len(), nodes.iter().join(" "));
-            input_interactive! {
-                uv: [(usize, usize); input.L-1]
-            }
-
-            for &node_idx in nodes.iter() {
-                self.edges[node_idx].retain(|&u| !nodes.contains(&u));
-            }
-
-            for (u, v) in uv.iter() {
-                self.edges[*u].push(*v);
-                self.edges[*v].push(*u);
-                count_included[*u][*v] += 1;
-                count_included[*v][*u] += 1;
-            }
-        }
-
-        let xy_center = input.rects.iter().map(|rect| rect.center()).collect_vec();
-
-        let mut dist = vec![vec![0.0; input.N]; input.N];
-        for i in 0..input.N {
-            let coord_i = xy_center[i];
-            for j in 0..input.N {
-                if i == j {
-                    continue;
-                }
-                let coord_j = xy_center[j];
-                let score = if count_appear[i][j] == 0 {
-                    0.0
-                } else {
-                    count_included[i][j] as f64 / count_appear[i][j] as f64
-                };
-                let d = coord_i.euclidean_dist(coord_j) as f64;
-                dist[i][j] = d - score * 100000000.0;
-            }
-        }
-        dist
     }
     pub fn cut(&mut self, input: &Input) {
         let xy_center = input
@@ -320,98 +290,6 @@ impl CutTree {
             }
         }
     }
-    pub fn climbing(&mut self, input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
-        let mut lengths = vec![0.0; input.M];
-
-        for (idx, group) in self.group.iter().enumerate() {
-            let mut uf = UnionFind::new(group.len());
-            let mut cand = vec![];
-            for i in 0..group.len() {
-                for j in i + 1..group.len() {
-                    cand.push((dist[group[i]][group[j]], i, j));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            for (_, i, j) in cand.iter() {
-                if uf.is_same(*i, *j) {
-                    continue;
-                }
-                uf.unite(*i, *j);
-                lengths[idx] += dist[group[*i]][group[*j]];
-            }
-        }
-
-        let mut iter = 0;
-        let mut updated_cnt = 0;
-
-        while get_time() < TLE {
-            iter += 1;
-            let ga = self.rng.gen_range(0..input.M);
-            let gb = self.rng.gen_range(0..input.M);
-            if ga == gb {
-                continue;
-            }
-            let before_length = lengths[ga] + lengths[gb];
-
-            let na_idx = self.rng.gen_range(0..self.group[ga].len());
-            let nb_idx = self.rng.gen_range(0..self.group[gb].len());
-            let na = self.group[ga].remove(na_idx);
-            let nb = self.group[gb].remove(nb_idx);
-            self.group[ga].push(nb);
-            self.group[gb].push(na);
-
-            // aのグループについて、最小全域木を構成
-            let mut score_a = 0.0;
-            let mut uf = UnionFind::new(self.group[ga].len());
-            let mut cand = vec![];
-            for i in 0..self.group[ga].len() {
-                for j in i + 1..self.group[ga].len() {
-                    cand.push((dist[self.group[ga][i]][self.group[ga][j]], i, j));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            for (_, i, j) in cand.iter() {
-                if uf.is_same(*i, *j) {
-                    continue;
-                }
-                uf.unite(*i, *j);
-                score_a += dist[self.group[ga][*i]][self.group[ga][*j]];
-            }
-
-            // bのグループについて、最小全域木を構成
-            let mut score_b = 0.0;
-            let mut uf = UnionFind::new(self.group[gb].len());
-            let mut cand = vec![];
-            for i in 0..self.group[gb].len() {
-                for j in i + 1..self.group[gb].len() {
-                    cand.push((dist[self.group[gb][i]][self.group[gb][j]], i, j));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            for (_, i, j) in cand.iter() {
-                if uf.is_same(*i, *j) {
-                    continue;
-                }
-                uf.unite(*i, *j);
-                score_b += dist[self.group[gb][*i]][self.group[gb][*j]];
-            }
-
-            let after_length = score_a + score_b;
-            let diff_score = after_length - before_length;
-            if diff_score < 0.0 {
-                lengths[ga] = score_a;
-                lengths[gb] = score_b;
-                updated_cnt += 1;
-            } else {
-                let na = self.group[ga].pop().unwrap();
-                let nb = self.group[gb].pop().unwrap();
-                self.group[ga].push(nb);
-                self.group[gb].push(na);
-            }
-        }
-        eprintln!("updated_cnt = {}", updated_cnt);
-        eprintln!("iter = {}", iter);
-    }
     pub fn annealing(&mut self, input: &Input, dist: &Vec<Vec<f64>>, TLE: f64) {
         let mut lengths = vec![0.0; input.M];
 
@@ -420,7 +298,7 @@ impl CutTree {
             let mut cand = vec![];
             for i in 0..group.len() {
                 for j in i + 1..group.len() {
-                    cand.push((dist[group[i]][group[j]], i, j));
+                    cand.push((self.order_map[&(group[i], group[j])], i, j));
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -465,7 +343,7 @@ impl CutTree {
             let mut cand = vec![];
             for i in 0..nodes.len() {
                 for j in i + 1..nodes.len() {
-                    cand.push((dist[nodes[i]][nodes[j]], i, j));
+                    cand.push((self.order_map[&(nodes[i], nodes[j])], i, j));
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -547,7 +425,7 @@ impl CutTree {
             let mut cand = vec![];
             for a in 0..a_nodes.len() {
                 for b in 0..b_nodes.len() {
-                    cand.push((dist[a_nodes[a]][b_nodes[b]], b_nodes[b]));
+                    cand.push((self.order_map[&(a_nodes[a], b_nodes[b])], b_nodes[b]));
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -571,7 +449,7 @@ impl CutTree {
             let mut cand = vec![];
             for i in 0..a_nodes.len() {
                 for j in i + 1..a_nodes.len() {
-                    cand.push((dist[a_nodes[i]][a_nodes[j]], i, j));
+                    cand.push((self.order_map[&(a_nodes[i], a_nodes[j])], i, j));
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -588,7 +466,7 @@ impl CutTree {
             let mut cand = vec![];
             for i in 0..b_nodes.len() {
                 for j in i + 1..b_nodes.len() {
-                    cand.push((dist[b_nodes[i]][b_nodes[j]], i, j));
+                    cand.push((self.order_map[&(b_nodes[i], b_nodes[j])], i, j));
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
