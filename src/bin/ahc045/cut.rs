@@ -346,7 +346,7 @@ impl CutTree {
         let mut iter = 0;
         let mut updated_cnt = 0;
 
-        let T0 = 50.0;
+        let T0 = 150.0;
         let T1 = 10.0;
 
         while input.M > 1 && get_time() < TLE {
