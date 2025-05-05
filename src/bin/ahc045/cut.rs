@@ -358,7 +358,7 @@ impl CutTree {
                 std::mem::swap(&mut ga, &mut gb);
             }
 
-            let before_length = lengths[ga] + lengths[gb];
+            let mut before_length = lengths[ga] + lengths[gb];
 
             let nodes = self.group[ga]
                 .iter()
@@ -376,6 +376,7 @@ impl CutTree {
                 }
             }
             cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            let mut score_c = 0.0;
             for (_, i, j) in cand.iter() {
                 if uf.is_same(*i, *j) {
                     continue;
@@ -383,169 +384,384 @@ impl CutTree {
                 uf.unite(*i, *j);
                 edges[nodes[*i]].push(nodes[*j]);
                 edges[nodes[*j]].push(nodes[*i]);
+                score_c += dist[nodes[*i]][nodes[*j]];
             }
 
-            let mut size = vec![0; input.N];
-            for i in 0..nodes.len() {
-                size[nodes[i]] = 1;
-            }
-            let start = nodes[0];
-            let mut used = vec![false; input.N];
-            let mut parents = vec![!0; input.N];
-            let mut children = vec![vec![]; input.N];
-            used[start] = true;
-            dfs(
-                start,
-                &edges,
-                &mut used,
-                &mut size,
-                &mut parents,
-                &mut children,
-            );
-            assert!(*size.iter().max().unwrap() == nodes.len());
+            let size_c = nodes.len();
+            let cand_c = input
+                .G
+                .iter()
+                .enumerate()
+                .filter(|(_, g)| **g == size_c)
+                .map(|(i, _)| i)
+                .collect_vec();
 
-            let mut indexes = size.iter().positions(|&s| s == input.G[ga]).collect_vec();
-            indexes.sort_by(|a, b| {
-                if parents[*a] == !0 || parents[*b] == !0 {
-                    Ordering::Equal
-                } else {
-                    dist[*a][parents[*a]]
-                        .partial_cmp(&dist[*b][parents[*b]])
-                        .unwrap()
+            if cand_c.is_empty() {
+                let mut size = vec![0; input.N];
+                for i in 0..nodes.len() {
+                    size[nodes[i]] = 1;
                 }
-            });
-            let idx = {
-                if indexes.len() > 0 {
-                    indexes.pop().unwrap()
-                } else {
-                    let mut idx = 0;
-                    let mut diff = 100i32;
-                    for i in 0..input.N {
-                        let s = size[i];
-                        if (input.G[ga] as i32 - s as i32).abs() < diff {
-                            diff = (input.G[ga] as i32 - s as i32).abs();
-                            idx = i;
-                        }
+                let start = nodes[0];
+                let mut used = vec![false; input.N];
+                let mut parents = vec![!0; input.N];
+                let mut children = vec![vec![]; input.N];
+                used[start] = true;
+                dfs(
+                    start,
+                    &edges,
+                    &mut used,
+                    &mut size,
+                    &mut parents,
+                    &mut children,
+                );
+                assert!(*size.iter().max().unwrap() == nodes.len());
+
+                let mut indexes = size.iter().positions(|&s| s == input.G[ga]).collect_vec();
+                indexes.sort_by(|a, b| {
+                    if parents[*a] == !0 || parents[*b] == !0 {
+                        Ordering::Equal
+                    } else {
+                        dist[*a][parents[*a]]
+                            .partial_cmp(&dist[*b][parents[*b]])
+                            .unwrap()
                     }
-                    idx
-                }
-            };
-
-            let mut a_nodes = vec![idx];
-            let mut Q = VecDeque::new();
-            Q.push_back(idx);
-            while let Some(v) = Q.pop_front() {
-                for &u in children[v].iter() {
-                    a_nodes.push(u);
-                    Q.push_back(u);
-                }
-            }
-            let mut b_nodes = vec![];
-            for node in nodes.iter() {
-                if !a_nodes.contains(node) {
-                    b_nodes.push(*node);
-                }
-            }
-
-            if a_nodes.len() > input.G[ga] {
-                std::mem::swap(&mut ga, &mut gb);
-                std::mem::swap(&mut a_nodes, &mut b_nodes);
-            }
-            let mut cand = vec![];
-            for a in 0..a_nodes.len() {
-                for b in 0..b_nodes.len() {
-                    cand.push((self.order_map[&(a_nodes[a], b_nodes[b])], b_nodes[b]));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            let mut added_nodes = vec![];
-            for (_, idx) in cand.iter() {
-                if added_nodes.len() == input.G[ga] - a_nodes.len() {
-                    break;
-                }
-                if !added_nodes.contains(idx) {
-                    added_nodes.push(*idx);
-                }
-            }
-            a_nodes.extend(added_nodes);
-            b_nodes.retain(|node| !a_nodes.contains(node));
-            assert!(a_nodes.len() == input.G[ga]);
-            assert!(b_nodes.len() == input.G[gb]);
-
-            // aのグループについて、最小全域木を構成
-            let mut score_a = 0.0;
-            let mut uf = UnionFind::new(a_nodes.len());
-            let mut cand = vec![];
-            for i in 0..a_nodes.len() {
-                for j in i + 1..a_nodes.len() {
-                    cand.push((self.order_map[&(a_nodes[i], a_nodes[j])], i, j));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            for (_, i, j) in cand.iter() {
-                if uf.is_same(*i, *j) {
-                    continue;
-                }
-                uf.unite(*i, *j);
-                score_a += dist[a_nodes[*i]][a_nodes[*j]];
-            }
-            // bのグループについて、最小全域木を構成
-            let mut score_b = 0.0;
-            let mut uf = UnionFind::new(b_nodes.len());
-            let mut cand = vec![];
-            for i in 0..b_nodes.len() {
-                for j in i + 1..b_nodes.len() {
-                    cand.push((self.order_map[&(b_nodes[i], b_nodes[j])], i, j));
-                }
-            }
-            cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            for (_, i, j) in cand.iter() {
-                if uf.is_same(*i, *j) {
-                    continue;
-                }
-                uf.unite(*i, *j);
-                score_b += dist[b_nodes[*i]][b_nodes[*j]];
-            }
-
-            let after_length = score_a + score_b;
-            let diff_score = after_length - before_length;
-            let T = T0 + (T1 - T0) * (get_time() / TLE);
-            if diff_score < 0.0 || self.rng.gen_bool((-diff_score / T).exp()) {
-                lengths[ga] = score_a;
-                lengths[gb] = score_b;
-                self.group[ga] = a_nodes.clone();
-                self.group[gb] = b_nodes.clone();
-                updated_cnt += 1;
-
-                for idx in self.group[ga].iter() {
-                    group_map[*idx] = ga;
-                }
-
-                for &i in a_nodes.iter() {
-                    for &(_, j) in dist_order_by[i].iter() {
-                        if group_map[i] != group_map[j] {
-                            neighbor_group[group_map[i]].push(group_map[j]);
-                            break;
+                });
+                let idx = {
+                    if indexes.len() > 0 {
+                        indexes.pop().unwrap()
+                    } else {
+                        let mut idx = 0;
+                        let mut diff = 100i32;
+                        for i in 0..input.N {
+                            let s = size[i];
+                            if (input.G[ga] as i32 - s as i32).abs() < diff {
+                                diff = (input.G[ga] as i32 - s as i32).abs();
+                                idx = i;
+                            }
                         }
+                        idx
+                    }
+                };
+
+                let mut a_nodes = vec![idx];
+                let mut Q = VecDeque::new();
+                Q.push_back(idx);
+                while let Some(v) = Q.pop_front() {
+                    for &u in children[v].iter() {
+                        a_nodes.push(u);
+                        Q.push_back(u);
                     }
                 }
-                neighbor_group[ga].sort();
-                neighbor_group[ga].dedup();
-
-                for idx in self.group[gb].iter() {
-                    group_map[*idx] = gb;
-                }
-
-                for &i in b_nodes.iter() {
-                    for &(_, j) in dist_order_by[i].iter() {
-                        if group_map[i] != group_map[j] {
-                            neighbor_group[group_map[i]].push(group_map[j]);
-                            break;
-                        }
+                let mut b_nodes = vec![];
+                for node in nodes.iter() {
+                    if !a_nodes.contains(node) {
+                        b_nodes.push(*node);
                     }
                 }
-                neighbor_group[gb].sort();
-                neighbor_group[gb].dedup();
+
+                if a_nodes.len() > input.G[ga] {
+                    std::mem::swap(&mut ga, &mut gb);
+                    std::mem::swap(&mut a_nodes, &mut b_nodes);
+                }
+                let mut cand = vec![];
+                for a in 0..a_nodes.len() {
+                    for b in 0..b_nodes.len() {
+                        cand.push((self.order_map[&(a_nodes[a], b_nodes[b])], b_nodes[b]));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                let mut added_nodes = vec![];
+                for (_, idx) in cand.iter() {
+                    if added_nodes.len() == input.G[ga] - a_nodes.len() {
+                        break;
+                    }
+                    if !added_nodes.contains(idx) {
+                        added_nodes.push(*idx);
+                    }
+                }
+                a_nodes.extend(added_nodes);
+                b_nodes.retain(|node| !a_nodes.contains(node));
+                assert!(a_nodes.len() == input.G[ga]);
+                assert!(b_nodes.len() == input.G[gb]);
+
+                // aのグループについて、最小全域木を構成
+                let mut score_a = 0.0;
+                let mut uf = UnionFind::new(a_nodes.len());
+                let mut cand = vec![];
+                for i in 0..a_nodes.len() {
+                    for j in i + 1..a_nodes.len() {
+                        cand.push((self.order_map[&(a_nodes[i], a_nodes[j])], i, j));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                for (_, i, j) in cand.iter() {
+                    if uf.is_same(*i, *j) {
+                        continue;
+                    }
+                    uf.unite(*i, *j);
+                    score_a += dist[a_nodes[*i]][a_nodes[*j]];
+                }
+                // bのグループについて、最小全域木を構成
+                let mut score_b = 0.0;
+                let mut uf = UnionFind::new(b_nodes.len());
+                let mut cand = vec![];
+                for i in 0..b_nodes.len() {
+                    for j in i + 1..b_nodes.len() {
+                        cand.push((self.order_map[&(b_nodes[i], b_nodes[j])], i, j));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                for (_, i, j) in cand.iter() {
+                    if uf.is_same(*i, *j) {
+                        continue;
+                    }
+                    uf.unite(*i, *j);
+                    score_b += dist[b_nodes[*i]][b_nodes[*j]];
+                }
+
+                let after_length = score_a + score_b;
+                let diff_score = after_length - before_length;
+                let T = T0 + (T1 - T0) * (get_time() / TLE);
+                if diff_score < 0.0 || self.rng.gen_bool((-diff_score / T).exp()) {
+                    lengths[ga] = score_a;
+                    lengths[gb] = score_b;
+                    self.group[ga] = a_nodes.clone();
+                    self.group[gb] = b_nodes.clone();
+                    updated_cnt += 1;
+
+                    for idx in self.group[ga].iter() {
+                        group_map[*idx] = ga;
+                    }
+
+                    for &i in a_nodes.iter() {
+                        for &(_, j) in dist_order_by[i].iter() {
+                            if group_map[i] != group_map[j] {
+                                neighbor_group[group_map[i]].push(group_map[j]);
+                                break;
+                            }
+                        }
+                    }
+                    neighbor_group[ga].sort();
+                    neighbor_group[ga].dedup();
+
+                    for idx in self.group[gb].iter() {
+                        group_map[*idx] = gb;
+                    }
+
+                    for &i in b_nodes.iter() {
+                        for &(_, j) in dist_order_by[i].iter() {
+                            if group_map[i] != group_map[j] {
+                                neighbor_group[group_map[i]].push(group_map[j]);
+                                break;
+                            }
+                        }
+                    }
+                    neighbor_group[gb].sort();
+                    neighbor_group[gb].dedup();
+                }
+            } else {
+                let gc = cand_c[self.rng.gen_range(0..cand_c.len())];
+                before_length += lengths[gc];
+                let c_nodes = nodes;
+                let nodes = self.group[gc].clone();
+
+                let mut uf = UnionFind::new(nodes.len());
+                let mut edges = vec![vec![]; input.N];
+                let mut cand = vec![];
+                for i in 0..nodes.len() {
+                    for j in i + 1..nodes.len() {
+                        cand.push((self.order_map[&(nodes[i], nodes[j])], i, j));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                for (_, i, j) in cand.iter() {
+                    if uf.is_same(*i, *j) {
+                        continue;
+                    }
+                    uf.unite(*i, *j);
+                    edges[nodes[*i]].push(nodes[*j]);
+                    edges[nodes[*j]].push(nodes[*i]);
+                }
+
+                let mut size = vec![0; input.N];
+                for i in 0..nodes.len() {
+                    size[nodes[i]] = 1;
+                }
+                let start = nodes[0];
+                let mut used = vec![false; input.N];
+                let mut parents = vec![!0; input.N];
+                let mut children = vec![vec![]; input.N];
+                used[start] = true;
+                dfs(
+                    start,
+                    &edges,
+                    &mut used,
+                    &mut size,
+                    &mut parents,
+                    &mut children,
+                );
+                assert!(*size.iter().max().unwrap() == nodes.len());
+
+                let mut indexes = size.iter().positions(|&s| s == input.G[ga]).collect_vec();
+                indexes.sort_by(|a, b| {
+                    if parents[*a] == !0 || parents[*b] == !0 {
+                        Ordering::Equal
+                    } else {
+                        dist[*a][parents[*a]]
+                            .partial_cmp(&dist[*b][parents[*b]])
+                            .unwrap()
+                    }
+                });
+                let idx = {
+                    if indexes.len() > 0 {
+                        indexes.pop().unwrap()
+                    } else {
+                        let mut idx = 0;
+                        let mut diff = 100i32;
+                        for i in 0..input.N {
+                            let s = size[i];
+                            if (input.G[ga] as i32 - s as i32).abs() < diff {
+                                diff = (input.G[ga] as i32 - s as i32).abs();
+                                idx = i;
+                            }
+                        }
+                        idx
+                    }
+                };
+
+                let mut a_nodes = vec![idx];
+                let mut Q = VecDeque::new();
+                Q.push_back(idx);
+                while let Some(v) = Q.pop_front() {
+                    for &u in children[v].iter() {
+                        a_nodes.push(u);
+                        Q.push_back(u);
+                    }
+                }
+                let mut b_nodes = vec![];
+                for node in nodes.iter() {
+                    if !a_nodes.contains(node) {
+                        b_nodes.push(*node);
+                    }
+                }
+
+                if a_nodes.len() > input.G[ga] {
+                    std::mem::swap(&mut ga, &mut gb);
+                    std::mem::swap(&mut a_nodes, &mut b_nodes);
+                }
+                let mut cand = vec![];
+                for a in 0..a_nodes.len() {
+                    for b in 0..b_nodes.len() {
+                        cand.push((self.order_map[&(a_nodes[a], b_nodes[b])], b_nodes[b]));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                let mut added_nodes = vec![];
+                for (_, idx) in cand.iter() {
+                    if added_nodes.len() == input.G[ga] - a_nodes.len() {
+                        break;
+                    }
+                    if !added_nodes.contains(idx) {
+                        added_nodes.push(*idx);
+                    }
+                }
+                a_nodes.extend(added_nodes);
+                b_nodes.retain(|node| !a_nodes.contains(node));
+                assert!(a_nodes.len() == input.G[ga]);
+                assert!(b_nodes.len() == input.G[gb]);
+
+                // aのグループについて、最小全域木を構成
+                let mut score_a = 0.0;
+                let mut uf = UnionFind::new(a_nodes.len());
+                let mut cand = vec![];
+                for i in 0..a_nodes.len() {
+                    for j in i + 1..a_nodes.len() {
+                        cand.push((self.order_map[&(a_nodes[i], a_nodes[j])], i, j));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                for (_, i, j) in cand.iter() {
+                    if uf.is_same(*i, *j) {
+                        continue;
+                    }
+                    uf.unite(*i, *j);
+                    score_a += dist[a_nodes[*i]][a_nodes[*j]];
+                }
+                // bのグループについて、最小全域木を構成
+                let mut score_b = 0.0;
+                let mut uf = UnionFind::new(b_nodes.len());
+                let mut cand = vec![];
+                for i in 0..b_nodes.len() {
+                    for j in i + 1..b_nodes.len() {
+                        cand.push((self.order_map[&(b_nodes[i], b_nodes[j])], i, j));
+                    }
+                }
+                cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                for (_, i, j) in cand.iter() {
+                    if uf.is_same(*i, *j) {
+                        continue;
+                    }
+                    uf.unite(*i, *j);
+                    score_b += dist[b_nodes[*i]][b_nodes[*j]];
+                }
+
+                let after_length = score_a + score_b + score_c;
+                let diff_score = after_length - before_length;
+                let T = T0 + (T1 - T0) * (get_time() / TLE);
+                if diff_score < 0.0 || self.rng.gen_bool((-diff_score / T).exp()) {
+                    lengths[ga] = score_a;
+                    lengths[gb] = score_b;
+                    lengths[gc] = score_c;
+                    self.group[ga] = a_nodes.clone();
+                    self.group[gb] = b_nodes.clone();
+                    self.group[gc] = c_nodes.clone();
+                    updated_cnt += 1;
+
+                    for idx in self.group[ga].iter() {
+                        group_map[*idx] = ga;
+                    }
+
+                    for &i in a_nodes.iter() {
+                        for &(_, j) in dist_order_by[i].iter() {
+                            if group_map[i] != group_map[j] {
+                                neighbor_group[group_map[i]].push(group_map[j]);
+                                break;
+                            }
+                        }
+                    }
+                    neighbor_group[ga].sort();
+                    neighbor_group[ga].dedup();
+
+                    for idx in self.group[gb].iter() {
+                        group_map[*idx] = gb;
+                    }
+
+                    for &i in b_nodes.iter() {
+                        for &(_, j) in dist_order_by[i].iter() {
+                            if group_map[i] != group_map[j] {
+                                neighbor_group[group_map[i]].push(group_map[j]);
+                                break;
+                            }
+                        }
+                    }
+                    neighbor_group[gb].sort();
+                    neighbor_group[gb].dedup();
+
+                    for idx in self.group[gc].iter() {
+                        group_map[*idx] = gc;
+                    }
+
+                    for &i in nodes.iter() {
+                        for &(_, j) in dist_order_by[i].iter() {
+                            if group_map[i] != group_map[j] {
+                                neighbor_group[group_map[i]].push(group_map[j]);
+                                break;
+                            }
+                        }
+                    }
+                    neighbor_group[gc].sort();
+                    neighbor_group[gc].dedup();
+                }
             }
         }
         eprintln!("updated_cnt = {}", updated_cnt);
