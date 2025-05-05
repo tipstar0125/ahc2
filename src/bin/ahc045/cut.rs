@@ -311,19 +311,48 @@ impl CutTree {
             }
         }
 
+        let mut group_map = vec![!0; input.N];
+        for (group_idx, nodes) in self.group.iter().enumerate() {
+            for &idx in nodes.iter() {
+                group_map[idx] = group_idx;
+            }
+        }
+
+        let mut dist_order_by = vec![vec![]; input.N];
+        for i in 0..input.N {
+            for j in 0..input.N {
+                if i == j {
+                    continue;
+                }
+                dist_order_by[i].push((dist[i][j], j));
+            }
+            dist_order_by[i].sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        }
+
+        let mut neighbor_group = vec![vec![]; input.M];
+        for i in 0..input.N {
+            for &(_, j) in dist_order_by[i].iter() {
+                if group_map[i] != group_map[j] {
+                    neighbor_group[group_map[i]].push(group_map[j]);
+                    break;
+                }
+            }
+        }
+        for i in 0..input.M {
+            neighbor_group[i].sort();
+            neighbor_group[i].dedup();
+        }
+
         let mut iter = 0;
         let mut updated_cnt = 0;
 
         let T0 = 50.0;
         let T1 = 10.0;
 
-        while get_time() < TLE {
+        while input.M > 1 && get_time() < TLE {
             iter += 1;
             let mut ga = self.rng.gen_range(0..input.M);
-            let mut gb = self.rng.gen_range(0..input.M);
-            if ga == gb {
-                continue;
-            }
+            let mut gb = neighbor_group[ga][self.rng.gen_range(0..neighbor_group[ga].len())];
 
             if input.G[ga] > input.G[gb] {
                 std::mem::swap(&mut ga, &mut gb);
@@ -484,9 +513,39 @@ impl CutTree {
             if diff_score < 0.0 || self.rng.gen_bool((-diff_score / T).exp()) {
                 lengths[ga] = score_a;
                 lengths[gb] = score_b;
-                self.group[ga] = a_nodes;
-                self.group[gb] = b_nodes;
+                self.group[ga] = a_nodes.clone();
+                self.group[gb] = b_nodes.clone();
                 updated_cnt += 1;
+
+                for idx in self.group[ga].iter() {
+                    group_map[*idx] = ga;
+                }
+
+                for &i in a_nodes.iter() {
+                    for &(_, j) in dist_order_by[i].iter() {
+                        if group_map[i] != group_map[j] {
+                            neighbor_group[group_map[i]].push(group_map[j]);
+                            break;
+                        }
+                    }
+                }
+                neighbor_group[ga].sort();
+                neighbor_group[ga].dedup();
+
+                for idx in self.group[gb].iter() {
+                    group_map[*idx] = gb;
+                }
+
+                for &i in b_nodes.iter() {
+                    for &(_, j) in dist_order_by[i].iter() {
+                        if group_map[i] != group_map[j] {
+                            neighbor_group[group_map[i]].push(group_map[j]);
+                            break;
+                        }
+                    }
+                }
+                neighbor_group[gb].sort();
+                neighbor_group[gb].dedup();
             }
         }
         eprintln!("updated_cnt = {}", updated_cnt);
