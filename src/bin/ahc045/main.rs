@@ -12,8 +12,10 @@ mod cut;
 mod dsu;
 mod estimator;
 mod input;
+mod kiri;
 mod rectangle;
 mod test;
+mod writer;
 
 const TLE: f64 = 1.9;
 
