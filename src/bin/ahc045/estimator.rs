@@ -143,14 +143,14 @@ impl Estimator {
         }
         ids
     }
-    pub fn climbing(&mut self, input: &Input, tle: f64) {
+    pub fn climbing_random(&mut self, input: &Input, tle: f64) {
         let ids = self.get_ids(input);
         let mut crt = self
             .ineqs
             .iter()
             .filter(|ineq| ineq.is_error(&self.positions))
             .count() as i64;
-        eprint_blue(&format!("estimator climbing crt = {}", crt));
+        eprint_blue(&format!("estimator climbing random crt = {}", crt));
 
         let mut iter = 0;
         loop {
@@ -160,6 +160,9 @@ impl Estimator {
             }
 
             let idx = self.rng.gen_range(0..input.N);
+            if ids[idx].is_empty() {
+                continue;
+            }
             let before_pos = self.positions[idx];
             let next_pos = input.rects[idx].random_coord(&mut self.rng);
             let before_error = ids[idx]
@@ -182,8 +185,8 @@ impl Estimator {
             iter += 1;
         }
 
-        eprint_blue(&format!("estimator climbing iter = {}", iter));
-        eprint_blue(&format!("estimator climbing crt = {}", crt));
+        eprint_blue(&format!("estimator climbing random iter = {}", iter));
+        eprint_blue(&format!("estimator climbing random crt = {}", crt));
     }
 }
 
@@ -230,14 +233,14 @@ impl Inequality {
     fn swap_long_nodes(&mut self) {
         std::mem::swap(&mut self.long.0, &mut self.long.1);
     }
-    fn calc_gradient_short(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
-        let length = dist[self.short.0][self.short.1] as f64;
+    fn calc_gradient_short(&self, xy: &Vec<Coord>) -> (f64, f64) {
+        let length = xy[self.short.0].euclidean_dist(xy[self.short.1]) as f64;
         let dx = xy[self.short.1].x as f64 - xy[self.short.0].x as f64;
         let dy = xy[self.short.1].y as f64 - xy[self.short.0].y as f64;
         (dx / length, dy / length)
     }
-    fn calc_gradient_long(&self, xy: &Vec<Coord>, dist: &Vec<Vec<usize>>) -> (f64, f64) {
-        let length = dist[self.long.0][self.long.1] as f64;
+    fn calc_gradient_long(&self, xy: &Vec<Coord>) -> (f64, f64) {
+        let length = xy[self.long.0].euclidean_dist(xy[self.long.1]) as f64;
         let dx = xy[self.long.1].x as f64 - xy[self.long.0].x as f64;
         let dy = xy[self.long.1].y as f64 - xy[self.long.0].y as f64;
         (-dx / length, -dy / length)

@@ -22,7 +22,7 @@ fn solve(input: &Input) {
     estimator.measure(input);
     estimator.get_ineqs(input);
     estimator.filter_ineqs(input);
-    estimator.climbing(input, 1.0);
+    estimator.climbing_random(input, 1.0);
     let mut forest = Forest::new(input, &estimator);
     forest.greedy(input);
     forest.output();
