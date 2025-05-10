@@ -4,7 +4,12 @@ use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{dsu::UnionFind, estimator::Estimator, input::Input};
+use crate::{
+    common::{eprint_green, get_time},
+    dsu::UnionFind,
+    estimator::Estimator,
+    input::Input,
+};
 
 pub struct Forest {
     rng: Pcg64Mcg,
@@ -27,6 +32,47 @@ impl Forest {
             dist,
         }
     }
+    pub fn prim(
+        &mut self,
+        gi: usize,
+        g_size: usize,
+        nodes: &Vec<usize>,
+        used: &mut Vec<bool>,
+    ) -> usize {
+        let mut Q = BinaryHeap::new();
+        let start = **nodes
+            .iter()
+            .filter(|&&i| !used[i])
+            .collect_vec()
+            .choose(&mut self.rng)
+            .unwrap();
+        used[start] = true;
+        self.group[gi].push(start);
+        for &i in nodes.iter() {
+            if !used[i] {
+                Q.push((Reverse(self.dist[start][i]), i));
+            }
+        }
+
+        let mut score = 0;
+        while let Some((Reverse(d), u)) = Q.pop() {
+            if self.group[gi].len() == g_size {
+                break;
+            }
+            if used[u] {
+                continue;
+            }
+            used[u] = true;
+            self.group[gi].push(u);
+            score += d;
+            for &v in nodes.iter() {
+                if !used[v] {
+                    Q.push((Reverse(self.dist[u][v]), v));
+                }
+            }
+        }
+        score
+    }
     pub fn greedy(&mut self, input: &Input) {
         let order_by_group_size = input
             .G
@@ -38,40 +84,35 @@ impl Forest {
             .collect_vec();
 
         let mut used = vec![false; input.N];
-        let mut Q = BinaryHeap::new();
-
         for gi in order_by_group_size {
-            Q.clear();
-            let start = *(0..input.N)
-                .filter(|&i| !used[i])
-                .collect_vec()
-                .choose(&mut self.rng)
-                .unwrap();
-
-            self.group[gi].push(start);
-            used[start] = true;
-            for i in 0..input.N {
-                if !used[i] {
-                    Q.push((Reverse(self.dist[start][i]), i));
-                }
-            }
-
-            while let Some((_, u)) = Q.pop() {
-                if self.group[gi].len() == input.G[gi] {
-                    break;
-                }
-                if used[u] {
-                    continue;
-                }
-                used[u] = true;
-                self.group[gi].push(u);
-                for v in 0..input.N {
-                    if !used[v] {
-                        Q.push((Reverse(self.dist[u][v]), v));
-                    }
-                }
-            }
+            self.prim(gi, input.G[gi], &(0..input.N).collect_vec(), &mut used);
         }
+    }
+    pub fn random(&mut self, input: &Input, tle: f64) {
+        let mut used = vec![false; input.N];
+        let mut best_score = 1 << 60;
+        let mut best_group = vec![];
+        let mut iter = 0;
+        loop {
+            if get_time() > tle {
+                break;
+            }
+            used.fill(false);
+            self.group.fill(vec![]);
+            let mut order = (0..input.M).collect_vec();
+            order.shuffle(&mut self.rng);
+            let mut score = 0;
+            for gi in order {
+                score += self.prim(gi, input.G[gi], &(0..input.N).collect_vec(), &mut used);
+            }
+            if score < best_score {
+                best_score = score;
+                best_group = self.group.clone();
+            }
+            iter += 1;
+        }
+        self.group = best_group;
+        eprint_green(&format!("forest random iter = {}", iter));
     }
     pub fn output(&self) {
         println!("!");
