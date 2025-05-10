@@ -162,19 +162,18 @@ impl Estimator {
             let idx = self.rng.gen_range(0..input.N);
             let before_pos = self.positions[idx];
             let next_pos = input.rects[idx].random_coord(&mut self.rng);
-            let mut diff = 0;
-            for &id in &ids[idx] {
-                if self.ineqs[id].is_error(&self.positions) {
-                    diff -= 1;
-                }
-            }
-            self.positions[idx] = next_pos;
-            for &id in &ids[idx] {
-                if self.ineqs[id].is_error(&self.positions) {
-                    diff += 1;
-                }
-            }
+            let before_error = ids[idx]
+                .iter()
+                .filter(|&&id| self.ineqs[id].is_error(&self.positions))
+                .count();
 
+            self.positions[idx] = next_pos;
+            let after_error = ids[idx]
+                .iter()
+                .filter(|&&id| self.ineqs[id].is_error(&self.positions))
+                .count();
+
+            let diff = after_error as i64 - before_error as i64;
             if diff <= 0 {
                 crt += diff;
             } else {
