@@ -164,7 +164,24 @@ impl Estimator {
                 continue;
             }
             let before_pos = self.positions[idx];
-            let next_pos = input.rects[idx].random_coord(&mut self.rng);
+
+            // 矩形範囲をランダムに選択
+            let next_pos = if self.rng.gen_bool(0.5) {
+                input.rects[idx].random_coord(&mut self.rng)
+            } else {
+                let x_min = (self.positions[idx].x as f64 - 50.0).max(input.rects[idx].x_min as f64)
+                    as usize;
+                let x_max = (self.positions[idx].x as f64 + 50.0).min(input.rects[idx].x_max as f64)
+                    as usize;
+                let y_min = (self.positions[idx].y as f64 - 50.0).max(input.rects[idx].y_min as f64)
+                    as usize;
+                let y_max = (self.positions[idx].y as f64 + 50.0).min(input.rects[idx].y_max as f64)
+                    as usize;
+                let nx = self.rng.gen_range(x_min..=x_max);
+                let ny = self.rng.gen_range(y_min..=y_max);
+                Coord { x: nx, y: ny }
+            };
+
             let before_error = ids[idx]
                 .iter()
                 .filter(|&&id| self.ineqs[id].is_error(&self.positions))
@@ -187,6 +204,109 @@ impl Estimator {
 
         eprint_blue(&format!("estimator climbing random iter = {}", iter));
         eprint_blue(&format!("estimator climbing random crt = {}", crt));
+    }
+    pub fn annealing_gradient(&mut self, input: &Input, tle: f64) {
+        let ids = self.get_ids(input);
+        let mut crt = self
+            .ineqs
+            .iter()
+            .filter(|ineq| ineq.is_error(&self.positions))
+            .count() as i64;
+        eprint_blue(&format!("estimator climbing gradient crt = {}", crt));
+
+        const LR0: f64 = 400.0;
+        const LR1: f64 = 10.0;
+        const T0: f64 = 10.0;
+        const T1: f64 = 0.1;
+        let start_time = get_time();
+        let mut best_error = crt;
+        let mut best_pos = self.positions.clone();
+
+        let mut iter = 0;
+        loop {
+            let t = (get_time() - start_time) / (tle - start_time);
+            if t >= 1.0 || crt == 0 {
+                break;
+            }
+
+            let learning_rate = LR0 + (LR1 - LR0) * t; // 線形減衰
+            let temperature = T0 * (T1 / T0).powf(t); // 指数減衰
+
+            let idx = self.rng.gen_range(0..input.N);
+            if ids[idx].is_empty() {
+                continue;
+            }
+            let before_pos = self.positions[idx];
+            let before_error = ids[idx]
+                .iter()
+                .filter(|&&id| self.ineqs[id].is_error(&self.positions))
+                .count();
+
+            // 不等式が成立しない式について不等式が成立する方向に点を動かす
+            let mut x_gradient_sum = 0.0;
+            let mut y_gradient_sum = 0.0;
+            let mut gradient_count = 0;
+            for &id in ids[idx].iter() {
+                if self.ineqs[id].is_error(&self.positions) {
+                    if self.ineqs[id].short.0 == idx || self.ineqs[id].short.1 == idx {
+                        let (mut dx, mut dy) = self.ineqs[id].calc_gradient_short(&self.positions);
+                        if self.ineqs[id].short.1 == idx {
+                            dx = -dx;
+                            dy = -dy;
+                        }
+                        x_gradient_sum += dx;
+                        y_gradient_sum += dy;
+                        gradient_count += 1;
+                    }
+                    if self.ineqs[id].long.0 == idx || self.ineqs[id].long.1 == idx {
+                        let (mut dx, mut dy) = self.ineqs[id].calc_gradient_long(&self.positions);
+                        if self.ineqs[id].long.1 == idx {
+                            dx = -dx;
+                            dy = -dy;
+                        }
+                        x_gradient_sum += dx;
+                        y_gradient_sum += dy;
+                        gradient_count += 1;
+                    }
+                }
+            }
+
+            let next_pos = if gradient_count == 0 {
+                input.rects[idx].random_coord(&mut self.rng)
+            } else {
+                let x_gradient = x_gradient_sum / gradient_count as f64 * learning_rate;
+                let y_gradient = y_gradient_sum / gradient_count as f64 * learning_rate;
+                let nx = (self.positions[idx].x as f64 + x_gradient)
+                    .clamp(input.rects[idx].x_min as f64, input.rects[idx].x_max as f64)
+                    as usize;
+                let ny = (self.positions[idx].y as f64 + y_gradient)
+                    .clamp(input.rects[idx].y_min as f64, input.rects[idx].y_max as f64)
+                    as usize;
+                Coord { x: nx, y: ny }
+            };
+
+            self.positions[idx] = next_pos;
+            let after_error = ids[idx]
+                .iter()
+                .filter(|&&id| self.ineqs[id].is_error(&self.positions))
+                .count();
+
+            let diff = after_error as i64 - before_error as i64;
+            if diff <= 0 || self.rng.gen_bool((-diff as f64 / temperature).exp()) {
+                crt += diff;
+                if crt < best_error {
+                    best_error = crt;
+                    best_pos = self.positions.clone();
+                }
+            } else {
+                self.positions[idx] = before_pos;
+            }
+            iter += 1;
+        }
+        self.positions = best_pos;
+
+        eprint_blue(&format!("estimator climbing gradient iter = {}", iter));
+        eprint_blue(&format!("estimator climbing gradient crt = {}", crt));
     }
 }
 
