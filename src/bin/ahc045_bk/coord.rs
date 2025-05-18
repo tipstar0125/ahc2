@@ -13,18 +13,6 @@ impl Coord {
     pub fn in_map(self, size: usize) -> bool {
         self.x < size && self.y < size
     }
-    pub fn manhattan_dist(self, other: Coord) -> usize {
-        self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
-    }
-    pub fn euclidean_dist2(self, other: Coord) -> usize {
-        let dx = self.x.abs_diff(other.x);
-        let dy = self.y.abs_diff(other.y);
-        dx * dx + dy * dy
-    }
-    pub fn euclidean_dist(self, other: Coord) -> usize {
-        let dist2 = self.euclidean_dist2(other) as f64;
-        dist2.sqrt() as usize
-    }
 }
 
 impl std::fmt::Display for Coord {
@@ -62,4 +50,16 @@ impl std::ops::Mul<Coord> for Coord {
             y: self.y.wrapping_mul(rhs.y),
         }
     }
+}
+
+pub fn calc_dist(a: Coord, b: Coord) -> usize {
+    let dx = a.x.abs_diff(b.x);
+    let dy = a.y.abs_diff(b.y);
+    ((dx * dx + dy * dy) as f64).sqrt() as usize
+}
+
+pub fn calc_dist2(a: Coord, b: Coord) -> usize {
+    let dx = a.x.abs_diff(b.x);
+    let dy = a.y.abs_diff(b.y);
+    dx * dx + dy * dy
 }
